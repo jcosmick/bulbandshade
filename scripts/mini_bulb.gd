@@ -60,6 +60,7 @@ func _on_body_entered(body: Node2D) -> void:
 ## Saltello con giravolta, mini flash e scintille, poi sparisce verso l'alto.
 func _play_collect() -> void:
 	_sprite.squash(Vector2(1.3, 0.7))
+	Sfx.play("collect", -3.0, 0.03)
 	var tween := create_tween()
 	tween.tween_property(_sprite, "position:y", -90.0, 0.35) \
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)

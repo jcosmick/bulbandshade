@@ -43,7 +43,7 @@ func _on_body_entered(body: Node2D) -> void:
 		return
 	is_pressed = true
 	_light.color = LAMP_ON
-	Sfx.play("tap")
+	Sfx.play("button", -2.0)
 	var node := get_node_or_null(target)
 	if node and node.has_method("activate"):
 		node.activate()

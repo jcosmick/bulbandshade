@@ -61,7 +61,7 @@ func flash() -> void:
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_flash_tween.parallel().tween_property(_halo, "modulate:a", 0.0, 0.6) \
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	Sfx.play("flash", -8.0, 0.05, 1.6)
+	Sfx.play("mini_flash", -5.0, 0.08)
 
 
 ## Spegne il bagliore (es. mini lampadina già raccolta, mostrata come fantasma).

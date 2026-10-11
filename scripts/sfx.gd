@@ -3,7 +3,15 @@ extends Node
 ## a ogni pulsante dell'interfaccia. I WAV si rigenerano con sounds/make_sfx.py.
 
 const SOUNDS := {
+	"jump": preload("res://sounds/jump.wav"),
+	"land": preload("res://sounds/land.wav"),
 	"flash": preload("res://sounds/flash.wav"),
+	"flash_ready": preload("res://sounds/flash_ready.wav"),
+	"flash_dud": preload("res://sounds/flash_dud.wav"),
+	"mini_flash": preload("res://sounds/mini_flash.wav"),
+	"collect": preload("res://sounds/collect.wav"),
+	"checkpoint": preload("res://sounds/checkpoint.wav"),
+	"button": preload("res://sounds/button.wav"),
 	"drip": preload("res://sounds/drip.wav"),
 	"death": preload("res://sounds/death.wav"),
 	"tap": preload("res://sounds/tap.wav"),
@@ -11,7 +19,7 @@ const SOUNDS := {
 }
 ## Pulsanti touch di gioco che hanno già un suono proprio (o nessuno).
 const SILENT_ACTIONS := [&"jump", &"flash"]
-const POOL_SIZE := 8
+const POOL_SIZE := 12
 
 var _players: Array[AudioStreamPlayer] = []
 var _next := 0

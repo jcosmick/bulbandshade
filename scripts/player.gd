@@ -21,6 +21,9 @@ const JUMP_BUFFER_TIME := 0.12
 const PUSH_SPEED := 230.0
 const LIGHT_OFFSET := Vector2(0, -16)
 const GLOW_RADIUS := 300.0
+## Velocità di caduta minima per il suono di atterraggio e quella del tonfo più forte.
+const LAND_SOUND_MIN_SPEED := 450.0
+const LAND_SOUND_MAX_SPEED := 1800.0
 
 const GLASS_COLOR := Color(1.0, 0.95, 0.72)
 const FILAMENT_COLOR := Color(1.0, 0.55, 0.12)
@@ -128,6 +131,7 @@ func _physics_process(delta: float) -> void:
 		_jump_buffer = 0.0
 		_coyote = 0.0
 		_squash = Vector2(0.75, 1.25)
+		Sfx.play("jump", -3.0, 0.07)
 
 	var accel := GROUND_ACCEL if is_on_floor() else AIR_ACCEL
 	velocity.x = move_toward(velocity.x, direction * SPEED, accel * delta)
@@ -135,9 +139,11 @@ func _physics_process(delta: float) -> void:
 		_facing = signf(direction)
 
 	var was_on_floor := is_on_floor()
+	var fall_speed := velocity.y
 	move_and_slide()
 	if not was_on_floor and is_on_floor():
 		_squash = Vector2(1.25, 0.8)
+		_play_land(fall_speed)
 
 	for i in get_slide_collision_count():
 		var collision := get_slide_collision(i)
@@ -146,9 +152,22 @@ func _physics_process(delta: float) -> void:
 				and signf(direction) == -signf(collision.get_normal().x):
 			box.push(direction * PUSH_SPEED)
 
+	var was_charging := _flash_cooldown > 0.0
 	_flash_cooldown -= delta
+	if was_charging and _flash_cooldown <= 0.0 and controls_enabled:
+		Sfx.play("flash_ready", -9.0, 0.0)
 	if controls_enabled and Input.is_action_just_pressed("flash"):
+		if _flash_cooldown > 0.0:
+			Sfx.play("flash_dud", -6.0, 0.06)
 		try_flash()
+
+
+## Tonfo di atterraggio: più forte e più grave quanto più si cade veloci.
+func _play_land(fall_speed: float) -> void:
+	if fall_speed < LAND_SOUND_MIN_SPEED:
+		return
+	var weight := inverse_lerp(LAND_SOUND_MIN_SPEED, LAND_SOUND_MAX_SPEED, minf(fall_speed, LAND_SOUND_MAX_SPEED))
+	Sfx.play("land", lerpf(-14.0, -2.0, weight), 0.06, lerpf(1.1, 0.85, weight))
 
 
 ## Flash se la ricarica è pronta (force lo fa comunque, es. nel menu).
@@ -163,7 +182,7 @@ func try_flash(force := false) -> void:
 	_flash_tween = create_tween()
 	_flash_tween.tween_property(_flash_light, "energy", 0.0, 0.7) \
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	Sfx.play("flash")
+	Sfx.play("flash", 0.0, 0.0)
 	flashed.emit(light_origin(), flash_radius)
 
 
