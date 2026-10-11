@@ -69,6 +69,12 @@
   }
   .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(255,211,107,.45); }
   .btn svg { width: 22px; height: 22px; }
+  .btn-ghost {
+    margin-top: 12px; color: var(--glow); background: transparent;
+    border: 2px solid rgba(255,211,107,.55); box-shadow: none;
+  }
+  .btn-ghost:hover { background: rgba(255,211,107,.1); box-shadow: 0 6px 30px rgba(255,211,107,.18); }
+  .ctas { display: flex; flex-direction: column; align-items: center; }
   .soon { display: block; margin-top: 10px; font-size: .9rem; color: var(--muted); }
 
   /* Sections */
@@ -154,10 +160,16 @@
       <img src="icon.png" alt="Bulb &amp; Shade icon" width="112" height="112">
       <h1>Bulb &amp; Shade</h1>
       <p class="tagline">Light the way. Climb the shadows.</p>
+      <div class="ctas">
       <a class="btn" href="https://play.google.com/store/apps/details?id=com.bulbandshade.game">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 2.5v19a1 1 0 0 0 1.5.86L21 13.2a1.4 1.4 0 0 0 0-2.4L5.5 1.64A1 1 0 0 0 4 2.5Z"/></svg>
         Get it on Google Play
       </a>
+      <a class="btn btn-ghost" href="https://jcosmick.itch.io/bulb-shade">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7.5 10v4M5.5 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="15.5" cy="11" r="1.2" fill="currentColor"/><circle cx="17.5" cy="13.5" r="1.2" fill="currentColor"/></svg>
+        Play in your browser
+      </a>
+      </div>
       <span class="soon">Free · No ads · Plays offline</span>
     </div>
   </div>
@@ -234,6 +246,7 @@
   <div class="wrap">
     <nav>
       <a href="privacy/">Privacy Policy</a>
+      <a href="https://jcosmick.itch.io/bulb-shade">Play on itch.io</a>
       <a href="https://github.com/jcosmick/bulbandshade">Source on GitHub</a>
       <a href="mailto:jcosmick@gmail.com">Contact</a>
     </nav>
