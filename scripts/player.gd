@@ -37,6 +37,11 @@ const SPARK_COLOR := Color(0.7, 0.9, 1.0)
 @export var flash_radius := 750.0
 ## Secondi di ricarica tra un flash e l'altro.
 @export var flash_cooldown := 2.5
+## Solo editor: mostra le curve del salto (vedi JumpArc).
+@export var show_jump_arc := true:
+	set(value):
+		show_jump_arc = value
+		queue_redraw()
 
 var controls_enabled := true
 var dead := false
@@ -250,3 +255,5 @@ func _draw() -> void:
 			var end := start + Vector2.from_angle(angle) * 22.0
 			draw_polyline(PackedVector2Array([start, mid, end]), SPARK_COLOR, 3.0)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
+	if Engine.is_editor_hint() and show_jump_arc:
+		JumpArc.draw_arcs(self, Vector2(0, 52), 400.0)
