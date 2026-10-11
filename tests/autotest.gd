@@ -50,6 +50,19 @@ const SOLUTIONS := {
 		["walk_to", 190.0], ["wait", 0.3], ["shot", "E_pushed"], ["flash"], ["wait", 0.1], ["shot", "E_flash"],
 		["hold", "move_right"], ["jump", 0.4], ["wait", 0.4], ["jump", 0.4], ["wait", 1.2],
 	],
+	7: [
+		["walk_to", 770.0], ["wait", 0.2], ["flash"], ["wait", 0.1], ["shot", "A_flash"],
+		["hold", "move_right"], ["jump", 0.4], ["wait", 0.2], ["jump", 0.4], ["walk_to", 1800.0], ["wait", 0.3],
+		["check", Vector2(1800, 2368)], ["shot", "A_end"], ["wait", 2.0],
+		["flash"], ["wait", 0.1], ["shot", "B_flash"],
+		["hold", "move_right"], ["jump", 0.4], ["wait", 0.2], ["jump", 0.4], ["walk_to", 2500.0], ["wait", 0.3],
+		["check", Vector2(2500, 1998)], ["shot", "B_end"],
+		["walk_to", 2620.0], ["wait", 3.5], ["shot", "C_crate"],
+		["walk_to", 2420.0], ["hold", "move_left"], ["jump", 0.4], ["free", "move_left"], ["wait", 0.5], ["walk_to", 2180.0], ["wait", 0.3],
+		["check", Vector2(2180, 1778)], ["wait", 1.0], ["flash"], ["wait", 0.1], ["shot", "C_flash"],
+		["hold", "move_left"], ["jump", 0.3], ["wait", 0.3], ["jump", 0.3], ["wait", 0.3], ["jump", 0.4],
+		["walk_to", 1350.0], ["wait", 0.5],
+	],
 }
 
 var game: Node

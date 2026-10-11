@@ -8,6 +8,7 @@ const LEVELS: Array[String] = [
 	"res://levels/level_04.tscn",
 	"res://levels/level_05.tscn",
 	"res://levels/level_06.tscn",
+	"res://levels/level_07.tscn",
 ]
 const SAVE_PATH := "user://progress.cfg"
 
@@ -15,6 +16,9 @@ const SAVE_PATH := "user://progress.cfg"
 var selected_level := 0
 ## Se false i progressi non vengono scritti su disco (test automatici).
 var persist := true
+## Livello avviato con F6 che non è ancora in LEVELS: la scena di gioco carica
+## questo al posto di selected_level e i progressi non si salvano.
+var test_level := ""
 
 ## Indice del livello -> minor numero di flash con cui è stato completato.
 var _best_flashes := {}

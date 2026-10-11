@@ -69,7 +69,8 @@ func load_level(index: int) -> void:
 	for platform in _shadow_layer.get_children():
 		platform.queue_free()
 
-	level = load(Progress.LEVELS[index]).instantiate()
+	var path := Progress.test_level if Progress.test_level else Progress.LEVELS[index]
+	level = load(path).instantiate()
 	add_child(level)
 	player = level.get_node("Player")
 	goal = level.get_node("Goal")
@@ -150,9 +151,11 @@ func _on_goal_reached() -> void:
 
 
 func _show_win_panel() -> void:
-	var last := level_index == Progress.LEVELS.size() - 1
-	var best := Progress.best_flashes(level_index)
-	Progress.complete_level(level_index, flash_count)
+	var testing := not Progress.test_level.is_empty()
+	var last := testing or level_index == Progress.LEVELS.size() - 1
+	var best := -1 if testing else Progress.best_flashes(level_index)
+	if not testing:
+		Progress.complete_level(level_index, flash_count)
 	_win_stats.text = "Flashes used: %d" % flash_count
 	if best >= 0:
 		_win_stats.text += "  ·  record: %d" % mini(best, flash_count)
