@@ -1,14 +1,24 @@
 extends Node
 ## Screenshot per la pagina dello store (solo sviluppo).
-## Uso: Godot --path . res://tests/store_shots.tscn -- --out=<cartella>
+## Uso: Godot --path . res://tests/store_shots.tscn -- --out=<cartella> [--size=1080x1920]
+## Si renderizza in un SubViewport, cosi' la dimensione non dipende dal monitor.
 
 var out_dir := "user://store_shots"
+var shot_size := Vector2i(1080, 1920)
+var vp: SubViewport
 
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--out="):
 			out_dir = arg.trim_prefix("--out=")
+		elif arg.begins_with("--size="):
+			var wh := arg.trim_prefix("--size=").split("x")
+			shot_size = Vector2i(int(wh[0]), int(wh[1]))
+	vp = SubViewport.new()
+	vp.size = shot_size
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(vp)
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	Progress.persist = false
 	Progress._best_flashes.clear()
@@ -22,12 +32,12 @@ func _ready() -> void:
 
 func _run() -> void:
 	var menu: Node = load("res://scenes/menu.tscn").instantiate()
-	get_tree().root.add_child(menu)
+	vp.add_child(menu)
 	await _wait(1.0)
 	await _shot("00_menu")
 	menu.queue_free()
 	var game: Node = load("res://scenes/game.tscn").instantiate()
-	add_child(game)
+	vp.add_child(game)
 	for i in Progress.LEVELS.size():
 		game.load_level(i)
 		await _wait(0.8)
@@ -46,4 +56,4 @@ func _wait(seconds: float) -> void:
 
 func _shot(name: String) -> void:
 	await RenderingServer.frame_post_draw
-	get_viewport().get_texture().get_image().save_png(out_dir.path_join(name + ".png"))
+	vp.get_texture().get_image().save_png(out_dir.path_join(name + ".png"))
