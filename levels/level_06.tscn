@@ -1,0 +1,257 @@
+[gd_scene load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://scripts/level.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/room_background.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/block.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/player.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/goal_lamp.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/water_pool.gd" id="6"]
+[ext_resource type="Script" path="res://scripts/water_drip.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/window_light.gd" id="8"]
+[ext_resource type="Script" path="res://scripts/checkpoint.gd" id="9"]
+[ext_resource type="Script" path="res://scripts/push_box.gd" id="10"]
+[ext_resource type="Script" path="res://scripts/glass_pane.gd" id="11"]
+[ext_resource type="Script" path="res://scripts/rail_crate.gd" id="12"]
+[ext_resource type="Script" path="res://scripts/floor_button.gd" id="13"]
+
+[node name="Level06" type="Node2D"]
+script = ExtResource("1")
+level_name = "6 · The Factory"
+icon = "factory"
+level_rect = Rect2(0, 0, 3240, 2600)
+
+[node name="Background" type="Node2D" parent="."]
+script = ExtResource("2")
+rect = Rect2(0, 0, 3240, 2600)
+wainscot_y = 2200.0
+
+[node name="Ceiling" type="StaticBody2D" parent="."]
+position = Vector2(1620, 40)
+script = ExtResource("3")
+size = Vector2(3240, 80)
+
+[node name="WallLeft" type="StaticBody2D" parent="."]
+position = Vector2(30, 1300)
+script = ExtResource("3")
+size = Vector2(60, 2600)
+
+[node name="WallRight" type="StaticBody2D" parent="."]
+position = Vector2(3210, 1300)
+script = ExtResource("3")
+size = Vector2(60, 2600)
+
+[node name="FloorStart" type="StaticBody2D" parent="."]
+position = Vector2(370, 2550)
+script = ExtResource("3")
+size = Vector2(740, 100)
+
+[node name="StepCrate" type="StaticBody2D" parent="."]
+position = Vector2(650, 2466)
+script = ExtResource("3")
+size = Vector2(100, 68)
+casts_shadow = true
+
+[node name="PitBottomStart" type="StaticBody2D" parent="."]
+position = Vector2(1040, 2590)
+script = ExtResource("3")
+size = Vector2(600, 20)
+
+[node name="PitWaterStart" type="Area2D" parent="."]
+position = Vector2(1040, 2552.5)
+script = ExtResource("6")
+size = Vector2(600, 55)
+
+[node name="FloorGround" type="StaticBody2D" parent="."]
+position = Vector2(2290, 2550)
+script = ExtResource("3")
+size = Vector2(1900, 100)
+
+[node name="Checkpoint1" type="Area2D" parent="."]
+position = Vector2(1460, 2500)
+script = ExtResource("9")
+
+[node name="FaucetGround1" type="Node2D" parent="."]
+position = Vector2(1800, 1990)
+script = ExtResource("7")
+interval = 1.2
+mount = "ceiling"
+pipe_length = 45.0
+
+[node name="FaucetGround2" type="Node2D" parent="."]
+position = Vector2(2060, 1990)
+script = ExtResource("7")
+interval = 1.0
+phase = 0.5
+mount = "ceiling"
+pipe_length = 45.0
+
+[node name="Checkpoint2" type="Area2D" parent="."]
+position = Vector2(2200, 2500)
+script = ExtResource("9")
+
+[node name="PushBoxShaft" type="CharacterBody2D" parent="."]
+position = Vector2(2350, 2430)
+script = ExtResource("10")
+size = Vector2(120, 140)
+
+[node name="HangingCrateShaft" type="StaticBody2D" parent="."]
+position = Vector2(2760, 2300)
+script = ExtResource("3")
+size = Vector2(120, 80)
+casts_shadow = true
+chain_length = 360.0
+
+[node name="WindowLow" type="Node2D" parent="."]
+position = Vector2(3180, 2420)
+rotation = 3.141593
+script = ExtResource("8")
+opening = 120.0
+direction = Vector2(-1, 0)
+
+[node name="LedgeShaft" type="StaticBody2D" parent="."]
+position = Vector2(3110, 1900)
+script = ExtResource("3")
+size = Vector2(140, 40)
+
+[node name="Floor2Left" type="StaticBody2D" parent="."]
+position = Vector2(1080, 1850)
+script = ExtResource("3")
+size = Vector2(2040, 100)
+
+[node name="Floor2Right" type="StaticBody2D" parent="."]
+position = Vector2(2780, 1850)
+script = ExtResource("3")
+size = Vector2(160, 100)
+
+[node name="Checkpoint3" type="Area2D" parent="."]
+position = Vector2(2790, 1800)
+script = ExtResource("9")
+
+[node name="PitBottomTank" type="StaticBody2D" parent="."]
+position = Vector2(2400, 1890)
+script = ExtResource("3")
+size = Vector2(600, 20)
+
+[node name="PitWaterTank" type="Area2D" parent="."]
+position = Vector2(2400, 1852.5)
+script = ExtResource("6")
+size = Vector2(600, 55)
+
+[node name="PipeSupportTank" type="StaticBody2D" parent="."]
+position = Vector2(2410, 1300)
+script = ExtResource("3")
+size = Vector2(200, 30)
+
+[node name="SteppingCrate" type="StaticBody2D" parent="."]
+position = Vector2(2380, 1820)
+script = ExtResource("3")
+size = Vector2(180, 80)
+casts_shadow = true
+chain_length = 465.0
+
+[node name="FaucetTank" type="Node2D" parent="."]
+position = Vector2(2440, 1380)
+script = ExtResource("7")
+interval = 1.3
+phase = 0.3
+mount = "ceiling"
+pipe_length = 20.0
+
+[node name="Checkpoint4" type="Area2D" parent="."]
+position = Vector2(2000, 1800)
+script = ExtResource("9")
+
+[node name="GlassCube" type="StaticBody2D" parent="."]
+position = Vector2(1720, 1720)
+script = ExtResource("11")
+size = Vector2(160, 160)
+
+[node name="TallCrate" type="StaticBody2D" parent="."]
+position = Vector2(1570, 1650)
+script = ExtResource("3")
+size = Vector2(140, 300)
+casts_shadow = true
+
+[node name="WindowShutterMid" type="Node2D" parent="."]
+position = Vector2(60, 1350)
+script = ExtResource("8")
+opening = 200.0
+direction = Vector2(1, 0)
+on_time = 2.0
+off_time = 3.0
+
+[node name="Floor3Left" type="StaticBody2D" parent="."]
+position = Vector2(140, 1150)
+script = ExtResource("3")
+size = Vector2(160, 100)
+
+[node name="Floor3Mid" type="StaticBody2D" parent="."]
+position = Vector2(510, 1150)
+script = ExtResource("3")
+size = Vector2(260, 100)
+
+[node name="Floor3Right" type="StaticBody2D" parent="."]
+position = Vector2(1030, 1150)
+script = ExtResource("3")
+size = Vector2(340, 100)
+
+[node name="PitBottomA" type="StaticBody2D" parent="."]
+position = Vector2(750, 1190)
+script = ExtResource("3")
+size = Vector2(220, 20)
+
+[node name="PitWaterA" type="Area2D" parent="."]
+position = Vector2(750, 1152.5)
+script = ExtResource("6")
+size = Vector2(220, 55)
+
+[node name="PitBottomB" type="StaticBody2D" parent="."]
+position = Vector2(300, 1190)
+script = ExtResource("3")
+size = Vector2(160, 20)
+
+[node name="PitWaterB" type="Area2D" parent="."]
+position = Vector2(300, 1152.5)
+script = ExtResource("6")
+size = Vector2(160, 55)
+
+[node name="Checkpoint5" type="Area2D" parent="."]
+position = Vector2(1110, 1100)
+script = ExtResource("9")
+
+[node name="RailCrate" type="AnimatableBody2D" parent="."]
+position = Vector2(520, 900)
+script = ExtResource("12")
+size = Vector2(140, 100)
+chain_length = 663.0
+travel = 740.0
+rail_left = -260.0
+rail_right = 830.0
+hanger_length = 73.0
+
+[node name="Button" type="Area2D" parent="."]
+position = Vector2(130, 1100)
+script = ExtResource("13")
+target = NodePath("../RailCrate")
+
+[node name="SkylightShutter" type="Node2D" parent="."]
+position = Vector2(1350, 80)
+rotation = 1.570796
+script = ExtResource("8")
+opening = 200.0
+direction = Vector2(0, 1)
+on_time = 2.0
+off_time = 3.0
+
+[node name="LedgeGoal" type="StaticBody2D" parent="."]
+position = Vector2(1690, 510)
+script = ExtResource("3")
+size = Vector2(400, 40)
+
+[node name="Goal" type="Area2D" parent="."]
+position = Vector2(1750, 370)
+script = ExtResource("5")
+
+[node name="Player" type="CharacterBody2D" parent="."]
+position = Vector2(160, 2448)
+script = ExtResource("4")

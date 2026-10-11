@@ -1,0 +1,78 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/level.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/room_background.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/block.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/push_box.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/player.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/goal_lamp.gd" id="6"]
+[ext_resource type="Script" path="res://scripts/glass_pane.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/mirror.gd" id="8"]
+
+[node name="Level02" type="Node2D"]
+script = ExtResource("1")
+level_name = "2 · See-Through"
+icon = "glass"
+
+[node name="Background" type="Node2D" parent="."]
+script = ExtResource("2")
+
+[node name="Floor" type="StaticBody2D" parent="."]
+position = Vector2(540, 1470)
+script = ExtResource("3")
+size = Vector2(1080, 100)
+
+[node name="Ceiling" type="StaticBody2D" parent="."]
+position = Vector2(540, 40)
+script = ExtResource("3")
+size = Vector2(1080, 80)
+
+[node name="WallLeft" type="StaticBody2D" parent="."]
+position = Vector2(30, 760)
+script = ExtResource("3")
+size = Vector2(60, 1520)
+
+[node name="WallRight" type="StaticBody2D" parent="."]
+position = Vector2(1050, 760)
+script = ExtResource("3")
+size = Vector2(60, 1520)
+
+[node name="GlassCube" type="StaticBody2D" parent="."]
+position = Vector2(435, 1340)
+script = ExtResource("7")
+size = Vector2(190, 160)
+
+[node name="TallCrate" type="StaticBody2D" parent="."]
+position = Vector2(670, 1270)
+script = ExtResource("3")
+size = Vector2(140, 300)
+casts_shadow = true
+
+[node name="LedgeRight" type="StaticBody2D" parent="."]
+position = Vector2(950, 900)
+script = ExtResource("3")
+size = Vector2(140, 40)
+
+[node name="GlassShelf" type="StaticBody2D" parent="."]
+position = Vector2(660, 775)
+script = ExtResource("7")
+size = Vector2(200, 30)
+
+[node name="ShelfCrate" type="StaticBody2D" parent="."]
+position = Vector2(640, 715)
+script = ExtResource("3")
+size = Vector2(120, 90)
+casts_shadow = true
+
+[node name="LedgeGoal" type="StaticBody2D" parent="."]
+position = Vector2(220, 440)
+script = ExtResource("3")
+size = Vector2(320, 40)
+
+[node name="Goal" type="Area2D" parent="."]
+position = Vector2(190, 300)
+script = ExtResource("6")
+
+[node name="Player" type="CharacterBody2D" parent="."]
+position = Vector2(150, 1368)
+script = ExtResource("5")

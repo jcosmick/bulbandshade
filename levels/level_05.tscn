@@ -1,0 +1,168 @@
+[gd_scene format=3 uid="uid://13tfa52c7nqf"]
+
+[ext_resource type="Script" uid="uid://cgr4ipmwfnphq" path="res://scripts/level.gd" id="1"]
+[ext_resource type="Script" uid="uid://cfb54eli4ce7p" path="res://scripts/room_background.gd" id="2"]
+[ext_resource type="Script" uid="uid://c7ngnkpr6cikx" path="res://scripts/block.gd" id="3"]
+[ext_resource type="Script" uid="uid://kt1g27e60883" path="res://scripts/player.gd" id="4"]
+[ext_resource type="Script" uid="uid://bj4aruw1g0xq8" path="res://scripts/goal_lamp.gd" id="5"]
+[ext_resource type="Script" uid="uid://c5am5dc1sfroc" path="res://scripts/water_pool.gd" id="6"]
+[ext_resource type="Script" uid="uid://q3m0evvnpwdy" path="res://scripts/water_drip.gd" id="7"]
+[ext_resource type="Script" uid="uid://dvkfcfujuvfva" path="res://scripts/window_light.gd" id="8"]
+[ext_resource type="Script" uid="uid://41xrl1kpdaui" path="res://scripts/rail_crate.gd" id="10"]
+[ext_resource type="Script" uid="uid://dsuubmi51ia4i" path="res://scripts/floor_button.gd" id="11"]
+[ext_resource type="Script" uid="uid://ctayisjm6xu68" path="res://scripts/mini_bulb.gd" id="12"]
+
+[node name="Level05" type="Node2D" unique_id=50892602]
+script = ExtResource("1")
+level_name = "5 · The Cart"
+icon = "rail"
+level_rect = Rect2(0, 0, 2160, 2200)
+
+[node name="Background" type="Node2D" parent="." unique_id=1934883487]
+z_index = -10
+script = ExtResource("2")
+rect = Rect2(0, 0, 2160, 2200)
+wainscot_y = 1800.0
+
+[node name="Ceiling" type="StaticBody2D" parent="." unique_id=1392278177]
+position = Vector2(1080, 110)
+script = ExtResource("3")
+size = Vector2(2160, 220)
+
+[node name="WallLeft" type="StaticBody2D" parent="." unique_id=404323563]
+position = Vector2(30, 1100)
+script = ExtResource("3")
+size = Vector2(60, 2200)
+
+[node name="WallRight" type="StaticBody2D" parent="." unique_id=909111718]
+position = Vector2(2130, 1100)
+script = ExtResource("3")
+size = Vector2(60, 2200)
+
+[node name="FloorLeft" type="StaticBody2D" parent="." unique_id=1852454851]
+position = Vector2(640, 2150)
+script = ExtResource("3")
+size = Vector2(1280, 100)
+
+[node name="FloorMiddle" type="StaticBody2D" parent="." unique_id=344435196]
+position = Vector2(1500, 2150)
+script = ExtResource("3")
+size = Vector2(200, 100)
+
+[node name="FloorRight" type="StaticBody2D" parent="." unique_id=1507793242]
+position = Vector2(2010, 2150)
+script = ExtResource("3")
+size = Vector2(300, 100)
+
+[node name="PitBottom" type="StaticBody2D" parent="." unique_id=1383015272]
+position = Vector2(1730, 2190)
+script = ExtResource("3")
+size = Vector2(260, 20)
+
+[node name="PitWater" type="Area2D" parent="." unique_id=792672308]
+position = Vector2(1730, 2152.5)
+script = ExtResource("6")
+size = Vector2(260, 55)
+
+[node name="Divider" type="StaticBody2D" parent="." unique_id=1610151874]
+position = Vector2(1110, 1200)
+script = ExtResource("3")
+size = Vector2(60, 1320)
+
+[node name="Skylight" type="Node2D" parent="." unique_id=388193856]
+position = Vector2(460, 220)
+rotation = 1.570796
+script = ExtResource("8")
+opening = 180.0
+direction = Vector2(0, 1)
+
+[node name="Pedestal" type="StaticBody2D" parent="." unique_id=1873138118]
+position = Vector2(460, 2030)
+script = ExtResource("3")
+size = Vector2(120, 140)
+
+[node name="CrateRamp" type="StaticBody2D" parent="." unique_id=1330846943]
+position = Vector2(460, 1910)
+script = ExtResource("3")
+size = Vector2(120, 100)
+casts_shadow = true
+
+[node name="LedgeGoal" type="StaticBody2D" parent="." unique_id=1474407878]
+position = Vector2(920, 1416)
+script = ExtResource("3")
+size = Vector2(320, 40)
+
+[node name="Goal" type="Area2D" parent="." unique_id=1584631217]
+position = Vector2(960, 1276)
+script = ExtResource("5")
+
+[node name="RailCrate" type="AnimatableBody2D" parent="." unique_id=579116403]
+position = Vector2(1500, 450)
+script = ExtResource("10")
+travel = -1040.0
+rail_right = 200.0
+hanger_length = 76.0
+
+[node name="PitBottomMiddle" type="StaticBody2D" parent="." unique_id=1319893894]
+position = Vector2(1340, 2190)
+script = ExtResource("3")
+size = Vector2(120, 20)
+
+[node name="PitWaterMiddle" type="Area2D" parent="." unique_id=1599523957]
+position = Vector2(1340, 2152.5)
+script = ExtResource("6")
+size = Vector2(120, 55)
+
+[node name="CrateA" type="StaticBody2D" parent="." unique_id=1711578111]
+position = Vector2(1500, 2020)
+script = ExtResource("3")
+size = Vector2(140, 160)
+casts_shadow = true
+
+[node name="LedgeB" type="StaticBody2D" parent="." unique_id=275486242]
+position = Vector2(1980, 1660)
+script = ExtResource("3")
+size = Vector2(240, 40)
+
+[node name="HangingCrateC" type="StaticBody2D" parent="." unique_id=663107160]
+position = Vector2(1760, 1440)
+script = ExtResource("3")
+size = Vector2(120, 100)
+casts_shadow = true
+chain_length = 1170.0
+
+[node name="WindowShutter" type="Node2D" parent="." unique_id=296309816]
+position = Vector2(2100, 1250)
+rotation = 3.141593
+script = ExtResource("8")
+opening = 260.0
+direction = Vector2(-1, -0.1)
+on_time = 2.5
+off_time = 3.0
+
+[node name="LedgeC" type="StaticBody2D" parent="." unique_id=709096147]
+position = Vector2(1380, 1100)
+script = ExtResource("3")
+size = Vector2(280, 40)
+
+[node name="FaucetC" type="Node2D" parent="." unique_id=1878455678]
+position = Vector2(1396, 880)
+script = ExtResource("7")
+interval = 1.1
+mount = "wall_left"
+pipe_length = 205.0
+
+[node name="Button" type="Area2D" parent="." unique_id=1072016762]
+position = Vector2(1290, 1080)
+script = ExtResource("11")
+target = NodePath("../RailCrate")
+
+[node name="MiniBulbGreen" type="Area2D" parent="." unique_id=252222173]
+position = Vector2(2060, 2050)
+script = ExtResource("12")
+id = "level05_green"
+color = Color(0.3, 0.9, 0.4, 1)
+
+[node name="Player" type="CharacterBody2D" parent="." unique_id=730016831]
+position = Vector2(180, 2048)
+script = ExtResource("4")

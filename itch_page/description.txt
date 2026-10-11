@@ -1,0 +1,17 @@
+Bulb & Shade
+
+You're a tiny light bulb stuck in a dark old building, and the only way out is up.
+
+Here's the twist: every time you flash, the crates around you cast shadows, and for a few seconds those shadows turn solid. Walk on them, jump off them, climb them, then hurry before they fade away.
+
+It sounds simple, but the rooms keep finding new ways to mess with you. Glass lets light pass straight through, so it casts no shadow. Light pouring in through the windows wipes out any shadow it touches. And water is bad news for a light bulb, so watch out for puddles and dripping pipes.
+
+What's inside:
+- 6 hand-made levels, from a quiet first room to a whole factory
+- Count your flashes and try to beat your best score on each level
+- Little coloured bulbs hidden around the levels, if you like poking into corners
+- Touch controls made for phones, keyboard works too
+
+Keyboard controls: A/D or the arrow keys to move, Space to jump, F to flash, R to restart the level.
+
+Made with love (and a lot of tiny shadows) in Godot.

@@ -1,0 +1,10 @@
+# Godot cache and local credentials (contains keystore password!)
+.godot/
+export/
+# Build outputs
+build/
+# Android build template (reinstall via Project > Install Android Build Template)
+android/
+# Signing keys
+*.keystore
+*.jks
