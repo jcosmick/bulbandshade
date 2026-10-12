@@ -68,11 +68,11 @@ jobs:
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "Version $name ($code)"
 
-      - name: Import project and install Android build template
+      - name: Import project
         run: |
-          godot --headless --import || true
-          godot --headless --install-android-build-template
-          echo "org.gradle.daemon=false" >> android/build/gradle.properties
+          timeout 10m godot --headless --import || true
+          mkdir -p "$HOME/.gradle"
+          echo "org.gradle.daemon=false" >> "$HOME/.gradle/gradle.properties"
 
       - name: Export signed AAB
         env:
@@ -82,7 +82,8 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$GODOT_ANDROID_KEYSTORE_RELEASE_PATH"
           mkdir -p build
-          godot --headless --export-release "$PRESET" "$AAB_PATH"
+          # --install-android-build-template only works together with an export flag
+          timeout 25m godot --headless --install-android-build-template --export-release "$PRESET" "$AAB_PATH"
           test -f "$AAB_PATH"
 
       - uses: actions/upload-artifact@v4
