@@ -11,7 +11,6 @@ const LIGHT_COLOR := Color(1.0, 0.86, 0.6)
 const LIGHT_TEXTURE_RADIUS := 128.0
 
 static var _light_texture: Texture2D
-static var _half_light_texture: Texture2D
 
 
 static func rect_points(size: Vector2) -> PackedVector2Array:
@@ -54,29 +53,6 @@ static func light_texture() -> Texture2D:
 		texture.fill_to = Vector2(1.0, 0.5)
 		_light_texture = texture
 	return _light_texture
-
-
-## Come light_texture() ma solo la metà superiore: la luce di uno specchio
-## illumina solo davanti a sé (ruota con il nodo).
-static func half_light_texture() -> Texture2D:
-	if _half_light_texture == null:
-		var size := 256
-		var center := size / 2.0
-		var image := Image.create(size, size, false, Image.FORMAT_RGBA8)
-		for y in size:
-			for x in size:
-				var offset := Vector2(x + 0.5 - center, y + 0.5 - center)
-				var d := offset.length() / center
-				var alpha := 0.0
-				if d < 0.45:
-					alpha = lerpf(1.0, 0.55, d / 0.45)
-				elif d < 1.0:
-					alpha = lerpf(0.55, 0.0, (d - 0.45) / 0.55)
-				# Sfuma il bordo dietro lo specchio invece di tagliarlo netto.
-				alpha *= clampf(-offset.y / 6.0 + 0.5, 0.0, 1.0)
-				image.set_pixel(x, y, Color(1, 1, 1, alpha))
-		_half_light_texture = ImageTexture.create_from_image(image)
-	return _half_light_texture
 
 
 static func make_light(parent: Node, radius: float, energy: float, shadows: bool) -> PointLight2D:

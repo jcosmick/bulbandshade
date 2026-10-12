@@ -1,7 +1,7 @@
 # Creare un livello in Godot
 
 I livelli si fanno direttamente nell'editor di Godot: tutti gli elementi
-(`Block`, `PushBox`, `Mirror`, ...) sono script `@tool` e si disegnano mentre
+(`Block`, `PushBox`, `Crate`, ...) sono script `@tool` e si disegnano mentre
 li sposti e li ridimensioni.
 
 ## Prefab disponibili (`prefabs/`)
@@ -13,7 +13,6 @@ li sposti e li ridimensioni.
 | `hanging_crate.tscn` | Cassa appesa con catena (la catena è solo decorativa) | `size`, `chain_length` |
 | `push_box.tscn` | Cassa spingibile | `size` |
 | `glass_pane.tscn` | Vetro: solido ma lascia passare la luce | `size` |
-| `mirror.tscn` | Specchio che riflette il flash | `length`, `flash_radius`, rotazione |
 | `water_pool.tscn` | Acqua (cortocircuito) | `size` |
 | `water_drip.tscn` | Tubo che gocciola | `interval`, `phase`, `mount`, `pipe_length` |
 | `window_light.tscn` | Finestra con fascio di luce, anche intermittente | `opening`, `direction`, `on_time`, `off_time`, `phase` |

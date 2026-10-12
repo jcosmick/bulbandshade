@@ -1,7 +1,6 @@
 class_name ShadowSystem
 extends Node
-## Trasforma le ombre del flash in piattaforme solide temporanee e propaga il
-## flash agli specchi che raggiunge.
+## Trasforma le ombre del flash in piattaforme solide temporanee.
 
 ## Durata (secondi) di un'ombra solida.
 @export var lifetime := 4.0
@@ -15,8 +14,6 @@ const ARC_STEP := 0.08
 ## Raggio con cui si calcola la zona nascosta dietro muri e sporgenze:
 ## abbastanza grande da coprire tutto il livello.
 const OCCLUSION_RADIUS := 5000.0
-## Quante volte un flash può rimbalzare da uno specchio all'altro.
-const MAX_MIRROR_BOUNCES := 3
 ## Bit di light mask degli occluder dei fasci: solo la luce del flash li vede,
 ## così il bagliore della lampadina e le altre luci li attraversano.
 const BEAM_OCCLUDER_MASK := 1 << 1
@@ -38,15 +35,15 @@ var _flash_origin := Vector2(-INF, -INF)
 var _beam_occluders: Array[LightOccluder2D] = []
 
 
-## Flash del giocatore: ombre dalla sua posizione e dagli specchi colpiti.
+## Flash del giocatore: ombre dalla sua posizione.
 ## Restituisce false se la lampadina è dentro il fascio di una finestra: in
-## piena luce il flash non può creare ombre (né raggiungere specchi).
+## piena luce il flash non può creare ombre.
 func flash(origin: Vector2, radius: float) -> bool:
 	_flash_origin = origin
 	_sync_beam_occluders()
 	if is_in_beam(origin):
 		return false
-	_emit(origin, radius, Vector2.ZERO, 0, [])
+	_emit(origin, radius)
 	return true
 
 
@@ -156,34 +153,19 @@ static func _bounds(polygon: PackedVector2Array) -> Rect2:
 	return rect
 
 
-## Una sorgente di luce. Con front != ZERO illumina solo il semipiano davanti.
-func _emit(origin: Vector2, radius: float, front: Vector2, depth: int, used_mirrors: Array) -> void:
+## Una sorgente di luce: proietta le ombre dei casters.
+func _emit(origin: Vector2, radius: float) -> void:
 	var solids := {}
-	var opaque: Array[PackedVector2Array] = []
 	for solid in get_tree().get_nodes_in_group("solids"):
 		solids[solid] = solid.get_world_polygon()
-		if not solid.is_in_group("transparent"):
-			opaque.append(solids[solid])
-	# I fasci accesi fermano il flash come un muro (anche verso gli specchi).
-	var barriers := _beam_barriers(origin)
-	_cast_shadows(origin, radius, front, solids, barriers)
-	opaque.append_array(barriers)
-
-	if depth >= MAX_MIRROR_BOUNCES:
-		return
-	for mirror: Mirror in get_tree().get_nodes_in_group("mirrors"):
-		if mirror not in used_mirrors and _reaches_mirror(origin, radius, mirror, opaque):
-			used_mirrors.append(mirror)
-			mirror.flash()
-			_emit(mirror.emit_point(), mirror.flash_radius, mirror.normal(), depth + 1, used_mirrors)
+	# I fasci accesi fermano il flash come un muro.
+	_cast_shadows(origin, radius, solids, _beam_barriers(origin))
 
 
-func _cast_shadows(origin: Vector2, radius: float, front: Vector2, solids: Dictionary, barriers: Array[PackedVector2Array]) -> void:
+func _cast_shadows(origin: Vector2, radius: float, solids: Dictionary, barriers: Array[PackedVector2Array]) -> void:
 	var bounds := LevelKit.rect_points(level_rect.size)
 	for i in bounds.size():
 		bounds[i] += level_rect.get_center()
-	if front != Vector2.ZERO:
-		bounds = _intersect_one(bounds, _half_plane(origin, front))
 
 	var beams := _beam_polygons()
 	# Zona dietro i fasci vista dal flash: project() vuole poligoni convessi.
@@ -207,23 +189,6 @@ func _cast_shadows(origin: Vector2, radius: float, front: Vector2, solids: Dicti
 		for i in pieces.size():
 			if _area(pieces[i]) >= MIN_AREA and not _is_hole(i, pieces):
 				_spawn(pieces[i])
-
-
-static func _reaches_mirror(origin: Vector2, radius: float, mirror: Mirror, opaque: Array[PackedVector2Array]) -> bool:
-	if (origin - mirror.global_position).dot(mirror.normal()) <= 0.0:
-		return false
-	for point in mirror.sample_points():
-		if origin.distance_to(point) <= radius and not _blocked(origin, point, opaque):
-			return true
-	return false
-
-
-static func _blocked(from: Vector2, to: Vector2, polygons: Array[PackedVector2Array]) -> bool:
-	for polygon in polygons:
-		for i in polygon.size():
-			if Geometry2D.segment_intersects_segment(from, to, polygon[i], polygon[(i + 1) % polygon.size()]) != null:
-				return true
-	return false
 
 
 ## Ombra proiettata da un poligono convesso illuminato da un punto: va dal
@@ -272,11 +237,6 @@ static func _half_plane(origin: Vector2, front: Vector2) -> PackedVector2Array:
 	var side := front.orthogonal() * OCCLUSION_RADIUS
 	var ahead := front * OCCLUSION_RADIUS
 	return PackedVector2Array([origin - side, origin + side, origin + side + ahead, origin - side + ahead])
-
-
-static func _intersect_one(polygon: PackedVector2Array, mask: PackedVector2Array) -> PackedVector2Array:
-	var result := Geometry2D.intersect_polygons(polygon, mask)
-	return result[0] if not result.is_empty() else PackedVector2Array()
 
 
 static func _subtract(pieces: Array[PackedVector2Array], cutters: Array) -> Array[PackedVector2Array]:
