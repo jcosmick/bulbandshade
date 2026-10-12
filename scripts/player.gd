@@ -24,6 +24,14 @@ const GLOW_RADIUS := 300.0
 ## Velocità di caduta minima per il suono di atterraggio e quella del tonfo più forte.
 const LAND_SOUND_MIN_SPEED := 450.0
 const LAND_SOUND_MAX_SPEED := 1800.0
+## Ogni quanti pixel percorsi a terra suona un passo, e sotto che velocità non si cammina.
+const STEP_DISTANCE := 120.0
+const STEP_MIN_SPEED := 60.0
+## Fermo da più di così si riparte da capo (le soste brevi non azzerano il ritmo).
+const STEP_IDLE_RESET := 0.15
+## Camminata: quanto si solleva e quanto dondola la lampadina a ogni passo.
+const WALK_BOB := 7.0
+const WALK_TILT := 0.065
 
 const GLASS_COLOR := Color(1.0, 0.95, 0.72)
 const FILAMENT_COLOR := Color(1.0, 0.55, 0.12)
@@ -33,6 +41,11 @@ const METAL_DARK := Color(0.38, 0.38, 0.42)
 const EYE_COLOR := Color(0.15, 0.1, 0.05)
 const DEAD_GLASS := Color(0.45, 0.47, 0.52)
 const SPARK_COLOR := Color(0.7, 0.9, 1.0)
+## Ogni tanto la lampadina sfarfalla: intervallo casuale (secondi) tra uno sfarfallio e l'altro.
+const FLICKER_MIN_INTERVAL := 20.0
+const FLICKER_MAX_INTERVAL := 50.0
+## Durate alternate spenta/accesa dello sfarfallio (inizia e finisce spenta).
+const FLICKER_PATTERN: Array[float] = [0.07, 0.06, 0.05, 0.12, 0.22]
 
 @export var flash_radius := 750.0
 ## Secondi di ricarica tra un flash e l'altro.
@@ -49,11 +62,20 @@ var _dead_time := 0.0
 var _coyote := 0.0
 var _jump_buffer := 0.0
 var _flash_cooldown := 0.0
+var _step_travel := 0.0
+var _step_idle := 0.0
+var _step_count := 0
+## 0 = ferma, 1 = camminata piena (sfuma per non scattare all'avvio e all'arresto).
+var _walk_blend := 0.0
 var _facing := 1.0
 var _squash := Vector2.ONE
 var _glow: PointLight2D
 var _flash_light: PointLight2D
 var _flash_tween: Tween
+var _flicker_wait := 0.0
+## Tempo dall'inizio dello sfarfallio in corso, negativo se non sta sfarfallando.
+var _flicker_time := -1.0
+var _flickering_off := false
 
 
 func _ready() -> void:
@@ -76,6 +98,7 @@ func _ready() -> void:
 	_flash_light.position = LIGHT_OFFSET
 	# Solo il flash si ferma contro i fasci delle finestre.
 	_flash_light.shadow_item_cull_mask = 1 | ShadowSystem.BEAM_OCCLUDER_MASK
+	_flicker_wait = randf_range(FLICKER_MIN_INTERVAL, FLICKER_MAX_INTERVAL)
 
 
 func light_origin() -> Vector2:
@@ -88,6 +111,7 @@ func die() -> void:
 		return
 	dead = true
 	_dead_time = 0.0
+	_stop_flicker()
 	controls_enabled = false
 	set_physics_process(false)
 	velocity = Vector2.ZERO
@@ -145,10 +169,12 @@ func _physics_process(delta: float) -> void:
 
 	var was_on_floor := is_on_floor()
 	var fall_speed := velocity.y
+	var push_velocity := velocity.x
 	move_and_slide()
 	if not was_on_floor and is_on_floor():
 		_squash = Vector2(1.25, 0.8)
 		_play_land(fall_speed)
+	_update_steps(delta)
 
 	for i in get_slide_collision_count():
 		var collision := get_slide_collision(i)
@@ -156,15 +182,49 @@ func _physics_process(delta: float) -> void:
 		if box and direction != 0.0 and absf(collision.get_normal().x) > 0.7 \
 				and signf(direction) == -signf(collision.get_normal().x):
 			box.push(direction * PUSH_SPEED)
+			# Lo slide azzererebbe la velocità contro la cassa: ripartendo da 0
+			# la lampadina resterebbe indietro e la spinta andrebbe a scatti.
+			velocity.x = push_velocity
 
 	var was_charging := _flash_cooldown > 0.0
 	_flash_cooldown -= delta
 	if was_charging and _flash_cooldown <= 0.0 and controls_enabled:
-		Sfx.play("flash_ready", -9.0, 0.0)
+		Sfx.play("flash_ready", -14.0, 0.0)
 	if controls_enabled and Input.is_action_just_pressed("flash"):
 		if _flash_cooldown > 0.0:
 			Sfx.play("flash_dud", -6.0, 0.06)
 		try_flash()
+
+
+## Passi: uno ogni STEP_DISTANCE pixel percorsi camminando a terra.
+func _update_steps(delta: float) -> void:
+	var speed := absf(get_real_velocity().x)
+	if is_on_floor() and speed < STEP_MIN_SPEED:
+		_step_idle += delta
+	if not is_on_floor() or _step_idle > STEP_IDLE_RESET:
+		# Ripartendo, il primo passo arriva quasi subito.
+		_step_travel = STEP_DISTANCE * 0.8
+		_step_idle = 0.0
+		return
+	if speed < STEP_MIN_SPEED:
+		return
+	_step_idle = 0.0
+	_step_travel += speed * delta
+	if _step_travel >= STEP_DISTANCE:
+		_step_travel -= STEP_DISTANCE
+		_step_count += 1
+		Sfx.play("shadow_step" if _on_shadow() else "step", -16.0, 0.08)
+
+
+## Vero se il pavimento sotto la lampadina è un'ombra solida.
+## Le slide collision non bastano: a terra velocity.y è 0 e il pavimento lo tiene
+## il floor snap, che non genera collisioni; si prova quindi una discesa a vuoto.
+func _on_shadow() -> bool:
+	var collision := move_and_collide(-up_direction * floor_snap_length, true)
+	if collision == null:
+		return false
+	var body := collision.get_collider() as CollisionObject2D
+	return body != null and body.collision_layer & ShadowSystem.SHADOW_COLLISION_LAYER != 0
 
 
 ## Tonfo di atterraggio: più forte e più grave quanto più si cade veloci.
@@ -194,6 +254,7 @@ func try_flash(force := false) -> void:
 ## Animazione di vittoria: la lampadina si avvita nel portalampada.
 func enter_socket(target: Vector2) -> Tween:
 	controls_enabled = false
+	_stop_flicker()
 	set_physics_process(false)
 	velocity = Vector2.ZERO
 	collision_layer = 0
@@ -213,6 +274,8 @@ func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	_squash = _squash.lerp(Vector2.ONE, minf(1.0, 12.0 * delta))
+	var walking := not dead and is_on_floor() and absf(get_real_velocity().x) >= STEP_MIN_SPEED
+	_walk_blend = move_toward(_walk_blend, 1.0 if walking else 0.0, 8.0 * delta)
 	if dead:
 		_dead_time += delta
 		# Sfarfallio del cortocircuito, poi buio.
@@ -221,15 +284,53 @@ func _process(delta: float) -> void:
 		return
 	# Mentre si ricarica la lampadina è più fioca.
 	if controls_enabled:
-		_glow.energy = lerpf(0.55, 1.0, flash_charge())
+		_update_flicker(delta)
+		_glow.energy = 0.0 if _flickering_off else lerpf(0.55, 1.0, flash_charge())
 	queue_redraw()
+
+
+## Sfarfallio casuale: per un attimo la lampadina si spegne e si riaccende.
+func _update_flicker(delta: float) -> void:
+	if _flicker_time < 0.0:
+		_flicker_wait -= delta
+		if _flicker_wait <= 0.0:
+			_flicker_time = 0.0
+		else:
+			return
+	_flicker_time += delta
+	var t := _flicker_time
+	for i in FLICKER_PATTERN.size():
+		t -= FLICKER_PATTERN[i]
+		if t < 0.0:
+			_set_flickering_off(i % 2 == 0)
+			return
+	_set_flickering_off(false)
+	_stop_flicker()
+
+
+## Spegne/riaccende la luce dello sfarfallio, con lo scatto del filamento a ogni cambio.
+func _set_flickering_off(off: bool) -> void:
+	if off != _flickering_off:
+		Sfx.play("flicker_off" if off else "flicker_on", -12.0, 0.1)
+	_flickering_off = off
+
+
+func _stop_flicker() -> void:
+	_flicker_time = -1.0
+	_flickering_off = false
+	_flicker_wait = randf_range(FLICKER_MIN_INTERVAL, FLICKER_MAX_INTERVAL)
 
 
 func _draw() -> void:
 	# Disegno relativo ai piedi, così lo schiacciamento resta appoggiato a terra.
-	draw_set_transform(Vector2(0, 52), 0.0, _squash)
+	# Camminata a tempo coi passi: il suono parte quando la fase torna a 0,
+	# cioè con la lampadina giù e inclinata sul "piede" d'appoggio.
+	var phase := _step_count + _step_travel / STEP_DISTANCE
+	var bob := -absf(sin(phase * PI)) * WALK_BOB * _walk_blend
+	var tilt := cos(phase * PI) * WALK_TILT * _walk_blend
+	draw_set_transform(Vector2(0, 52 + bob), tilt, _squash)
 	var glass_center := Vector2(0, -68)
-	var glass := DEAD_GLASS if dead else GLASS_COLOR
+	var glass := DEAD_GLASS if dead or _flickering_off else GLASS_COLOR
 	draw_circle(glass_center, 38.0, glass)
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(-27, -46), Vector2(27, -46), Vector2(17, -32), Vector2(-17, -32)

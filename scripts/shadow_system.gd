@@ -87,7 +87,7 @@ func _physics_process(_delta: float) -> void:
 		platform.dispose()
 		for i in pieces.size():
 			if _area(pieces[i]) >= MIN_AREA and not _is_hole(i, pieces):
-				_spawn(pieces[i], platform.age)
+				_spawn(pieces[i], platform.origin, platform.age)
 
 
 func _beam_polygons() -> Array[PackedVector2Array]:
@@ -188,7 +188,7 @@ func _cast_shadows(origin: Vector2, radius: float, solids: Dictionary, barriers:
 				pieces = _subtract(pieces, project(origin, solids[solid], OCCLUSION_RADIUS))
 		for i in pieces.size():
 			if _area(pieces[i]) >= MIN_AREA and not _is_hole(i, pieces):
-				_spawn(pieces[i])
+				_spawn(pieces[i], origin)
 
 
 ## Ombra proiettata da un poligono convesso illuminato da un punto: va dal
@@ -248,9 +248,9 @@ static func _subtract(pieces: Array[PackedVector2Array], cutters: Array) -> Arra
 	return pieces
 
 
-func _spawn(polygon: PackedVector2Array, age := 0.0) -> void:
+func _spawn(polygon: PackedVector2Array, origin: Vector2, age := 0.0) -> void:
 	for clean in _sanitize(polygon):
-		_spawn_clean(clean, age)
+		_spawn_clean(clean, origin, age)
 
 
 ## I ritagli possono lasciare vertici doppi o quasi allineati che Godot non
@@ -276,7 +276,7 @@ static func _sanitize(polygon: PackedVector2Array) -> Array[PackedVector2Array]:
 	return result
 
 
-func _spawn_clean(polygon: PackedVector2Array, age: float) -> void:
+func _spawn_clean(polygon: PackedVector2Array, origin: Vector2, age: float) -> void:
 	var collision := CollisionPolygon2D.new()
 	collision.polygon = polygon
 	collision.one_way_collision = one_way
@@ -288,7 +288,7 @@ func _spawn_clean(polygon: PackedVector2Array, age: float) -> void:
 	world.add_child(body)
 
 	var platform := ShadowPlatform.new()
-	platform.setup(polygon, lifetime, body, age)
+	platform.setup(polygon, lifetime, body, origin, age)
 	visual_layer.add_child(platform)
 
 

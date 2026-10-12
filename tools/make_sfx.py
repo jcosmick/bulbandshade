@@ -178,6 +178,133 @@ def land():
     save("land.wav", lowpass(out, 6000), peak=0.6)
 
 
+def step():
+    # Andatura della lampadina (niente gambe): saltellino sull'attacco a vite. Le spire
+    # strisciano sul pavimento ("zz" di tre micro-scatti), poi il "tik" morbido dell'atterraggio
+    # e un micro "tink" del vetro che vibra. Tre varianti che si alternano a caso.
+    for i, (f0, tink) in enumerate(((260, C7), (235, A6), (285, F7)), 1):
+        dur = 0.1
+        out = np.zeros(int(RATE * dur))
+        for k in range(3):
+            place(out, bandpass(click(0.006, 0.0008, 2000), 2000, 5000), k * 0.005, 0.12 - k * 0.03)
+        hit = 0.016
+        place(out, lowpass(click(0.012, 0.0015, 1500), 4500), hit, 0.45)
+        place(out, thump(f0, f0 * 0.55, 0.04, 0.012), hit, 0.55)
+        place(out, glass(tink, 0.06, 0.012, index=0.8), hit + 0.003, 0.06)
+        save(f"step_{i}.wav", lowpass(out, 5000), peak=0.5)
+
+
+def shadow_step():
+    # Passo sull'ombra: niente cemento duro, la lampadina affonda in qualcosa di morbido e
+    # vellutato. Le spire non strisciano: c'è un "fff" scuro e soffice, un tonfo ovattato più
+    # grave e una bollicina che scende (la stessa materia dello sfaldamento dell'ombra).
+    for i, (f0, bub) in enumerate(((190, 900), (170, 780), (210, 1020)), 1):
+        dur = 0.14
+        out = np.zeros(int(RATE * dur))
+        n = int(RATE * 0.07)
+        place(out, bandpass(noise(0.07), 250, 1400) * env(n, 0.006, 0.018), 0.0, 0.35)
+        hit = 0.012
+        place(out, thump(f0, f0 * 0.5, 0.06, 0.02), hit, 0.6)
+        place(out, pop(bub, 0.5), hit + 0.01, 1.0)
+        save(f"shadow_step_{i}.wav", room(lowpass(out, 2200), 0.3, 0.1), peak=0.45)
+
+
+def push():
+    # Cassa che scivola (loop di 2 s): legno che striscia liscio sul cemento, con un'intensità
+    # che "respira" piano (niente modulazioni veloci, che sembrano vibrazioni), un rombo grave
+    # e qualche rara "presa" del legno. Coda e testa sfumate per un loop senza stacchi.
+    dur, xfade = 2.0, 0.3
+    n, nx = int(RATE * (dur + xfade)), int(RATE * xfade)
+    t = t_of(dur + xfade)
+    knots = np.arange(0, dur + xfade + 0.2, 0.2)
+    breath = np.interp(t, knots, rng.uniform(0.65, 1.0, len(knots)))
+    breath = lowpass(breath, 4)
+    out = bandpass(noise(dur + xfade), 180, 1100) * breath
+    out += lowpass(noise(dur + xfade), 120) * 1.2
+    for at in (0.35, 0.9, 1.55, 2.05):
+        for k in range(rng.integers(2, 4)):
+            grain = bandpass(noise(0.03), 300, 1400) * env(int(RATE * 0.03), 0.001, 0.008)
+            place(out, grain, at + k * rng.uniform(0.015, 0.03), 0.5)
+    # Filtro prima della dissolvenza: filtrando dopo, il filtro ripartirebbe da zero in testa.
+    out = lowpass(out, 2500)
+    fade = np.linspace(0, 1, nx)
+    loop = out[: int(RATE * dur)].copy()
+    loop[:nx] = loop[:nx] * fade + out[-nx:] * (1 - fade)
+    save("push.wav", loop, peak=0.5, fade_out=False)
+
+
+def sizzle(dur, count, gain=1.0):
+    """Sfrigolio elettrico: micro-crepitii sparsi e un soffio acuto che si spegne."""
+    out = np.zeros(int(RATE * dur))
+    for _ in range(count):
+        at = rng.uniform(0, dur * 0.85)
+        crack = highpass(noise(0.004), 3000) * env(int(RATE * 0.004), 0.0001, rng.uniform(0.0004, 0.0012))
+        place(out, crack, at, rng.uniform(0.2, 1.0) * (1 - at / dur))
+    t = t_of(dur)
+    place(out, bandpass(noise(dur), 3000, 8000) * env(len(t), 0.002, dur * 0.3), 0.0, 0.25)
+    return lowpass(out, 9000) * gain
+
+
+def flicker_off():
+    # Sfarfallio, la luce salta: doppio "tsk" del filamento, uno sfrigolio di contatto che
+    # crepita e il ronzio che muore di colpo.
+    dur = 0.11
+    out = np.zeros(int(RATE * dur))
+    place(out, bandpass(click(0.01, 0.0012, 1800), 1500, 4500), 0.0, 0.5)
+    place(out, sizzle(0.1, 14), 0.002, 0.35)
+    place(out, bandpass(click(0.008, 0.001, 1800), 1500, 4500), 0.008, 0.25)
+    t = t_of(0.04)
+    hum = np.tanh(3 * np.sin(2 * np.pi * 120 * t)) * np.exp(-t / 0.01)
+    place(out, lowpass(hum, 1200), 0.0, 0.2)
+    save("flicker_off.wav", out, peak=0.45)
+
+
+def flicker_on():
+    # Sfarfallio, la luce torna: scattino, breve "bzz" del filamento che si riscalda e un
+    # tink di vetro appena accennato (stessa famiglia di flash_dud), con un filo di sfrigolio.
+    dur = 0.12
+    out = np.zeros(int(RATE * dur))
+    place(out, lowpass(click(0.01, 0.0012, 1500), 4000), 0.0, 0.3)
+    t = t_of(0.1)
+    buzz = np.tanh(3 * np.sin(2 * np.pi * 120 * t)) * env(len(t), 0.003, 0.03)
+    place(out, lowpass(buzz, 1500), 0.0, 0.35)
+    place(out, glass(C7, 0.08, 0.03, index=1.0), 0.005, 0.06)
+    place(out, sizzle(0.09, 9), 0.0, 0.25)
+    save("flicker_on.wav", out, peak=0.45)
+
+
+def pop(freq, gain=1.0):
+    """Bollicina: un "blip" piccolissimo che scende di tono."""
+    return sweep(freq, freq * 0.6, 0.02) * env(int(RATE * 0.02), 0.001, 0.005) * gain
+
+
+def shadow_dissolve():
+    # L'ombra si sfalda in pallini (ultimo secondo, è un avviso): bollicine che si fanno
+    # sempre più fitte con la stessa curva dello shader (t^1.6) e un fruscio che cresce.
+    dur = 1.0
+    out = np.zeros(int(RATE * dur))
+    for u in rng.uniform(0, 1, 40):
+        at = u ** (1 / 2.6) * dur * 0.97
+        place(out, pop(rng.uniform(1200, 2600)), at, 0.15 + 0.2 * at / dur)
+    t = t_of(dur)
+    place(out, bandpass(noise(dur), 800, 3000) * (t / dur) ** 1.6, 0.0, 0.12)
+    save("shadow_dissolve.wav", room(lowpass(out, 6000), 0.4, 0.12), peak=0.45)
+
+
+def shadow_puff():
+    # L'ombra sparisce: "puff" leggero e arioso, come un soffio. Una "p" appena accennata,
+    # un "u" breve di rumore nei medi e il "ff" d'aria acuta che sfuma. Niente bassi né coda
+    # lunga: con quelli sembrava un tonfo lontano.
+    dur = 0.28
+    out = np.zeros(int(RATE * dur))
+    place(out, highpass(noise(0.006), 500) * env(int(RATE * 0.006), 0.0005, 0.0015), 0.0, 0.3)
+    n = int(RATE * 0.06)
+    place(out, bandpass(noise(0.06), 300, 1200) * env(n, 0.004, 0.02), 0.002, 0.5)
+    n = int(RATE * 0.25)
+    place(out, bandpass(noise(0.25), 1500, 7000) * env(n, 0.012, 0.06), 0.01, 0.9)
+    save("shadow_puff.wav", room(highpass(out, 250), 0.3, 0.08), peak=0.45)
+
+
 def flash_ready():
     # Flash di nuovo carico: due "ping" di vetro che salgono, discreti ma riconoscibili.
     dur = 0.5
@@ -518,15 +645,81 @@ def victory_carillon():
     return room(out, 1.6, 0.35)
 
 
+def nylon(freq, dur, damp=0.996, tone=2500):
+    """Chitarra classica (Karplus-Strong): rumore filtrato che risuona nella "corda"."""
+    n = int(RATE * dur)
+    p = max(2, int(round(RATE / freq - 0.5)))
+    out = np.zeros(n)
+    out[:p] = lowpass(rng.uniform(-1, 1, p), tone)
+    for i in range(p + 1, n):
+        out[i] = damp * 0.5 * (out[i - p] + out[i - p - 1])
+    return out * np.clip(t_of(dur) / 0.002, 0, 1)
+
+
+def rhodes(freq, dur, decay=0.9):
+    """Piano elettrico (FM): corpo tondo con un po' di "bark" e il tintinnio della lamella."""
+    t = t_of(dur)
+    x = np.sin(2 * np.pi * freq * t + 1.2 * np.exp(-t / 0.25) * np.sin(2 * np.pi * freq * t))
+    x += 0.12 * np.sin(2 * np.pi * freq * 14 * t) * np.exp(-t / 0.02)
+    x *= 1 + 0.08 * np.sin(2 * np.pi * 4.5 * t)
+    return x * env(len(t), 0.003, decay)
+
+
+def vibraphone(freq, dur, decay=1.0):
+    """Vibrafono: tono puro con il quarto parziale della barra e il tremolo del motorino."""
+    t = t_of(dur)
+    x = np.sin(2 * np.pi * freq * t) + 0.25 * np.sin(2 * np.pi * freq * 4 * t) * np.exp(-t / 0.1)
+    x *= 1 + 0.25 * np.sin(2 * np.pi * 5.5 * t)
+    return x * env(len(t), 0.002, decay)
+
+
+def victory_cozy():
+    # D: "cozy" e corto. Chitarra nylon che sale Do-Fa-La-Do, poi Fa maj9 al piano
+    # elettrico con basso, e il vibrafono che canta La -> Do sopra.
+    dur = 2.0
+    out = np.zeros(int(RATE * dur))
+    for i, m in enumerate((60, 65, 69, 72)):
+        place(out, nylon(midi(m), 1.2), i * 0.07, 1.0)
+    land_at = 0.3
+    place(out, rhodes(midi(41), 1.6, 0.8), land_at, 0.35)
+    for i, m in enumerate((57, 64, 67, 72)):
+        place(out, rhodes(midi(m), 1.6, 1.0), land_at + i * 0.015, 0.18)
+    place(out, vibraphone(midi(81), 0.6, 0.25), land_at, 0.22)
+    place(out, vibraphone(midi(84), 1.4, 0.9), land_at + 0.22, 0.25)
+    return room(lowpass(out, 8000), 1.0, 0.25)
+
+
+def victory_glow():
+    # E: "irraggiamento" (1,5 s). La lampadina avvitata si accende e la luce invade la stanza:
+    # un "bloom" che sale nella nota, un soffio luminoso che si apre, un pad caldo in Fa che
+    # si gonfia e un luccichio di parziali acuti che tremolano piano.
+    dur = 1.5
+    out = np.zeros(int(RATE * dur))
+    place(out, soft_tone(midi(89), 1.2, 0.45, bend=-3.0, bend_time=0.06), 0.0, 0.25)
+    n = int(RATE * 0.9)
+    t = t_of(0.9)
+    cutoff = 300 * (5000 / 300) ** np.clip(t / 0.45, 0, 1)
+    riser = svf_lowpass(rng.standard_normal(n), cutoff, 1.2) * np.clip(t / 0.3, 0, 1) * np.exp(-t / 0.35)
+    place(out, riser, 0.0, 0.15)
+    place(out, warm_pad((53, 60, 65, 69, 72), 1.5, 0.25, 0.6), 0.0, 0.12)
+    t = t_of(1.2)
+    for i, m in enumerate((84, 88, 89, 91, 93, 96)):
+        shimmer = 1 + 0.35 * np.sin(2 * np.pi * rng.uniform(6, 9) * t + rng.uniform(0, 2 * np.pi))
+        tone = np.sin(2 * np.pi * midi(m) * t) * shimmer
+        place(out, tone * np.clip(t / 0.2, 0, 1) * np.exp(-t / 0.45), 0.08 + i * 0.04, 0.06)
+    return room(lowpass(out, 9000), 0.9, 0.3)
+
+
 VARIANTS = {
     "flash": {"a_kalimba": flash_kalimba, "b_synth": flash_stab, "c_bagliore": flash_burst,
               "d_morbido": flash_soft},
     "victory": {"a_kalimba": victory_kalimba, "b_fanfara": victory_fanfare,
-                "c_carillon": victory_carillon},
+                "c_carillon": victory_carillon, "d_cozy": victory_cozy,
+                "e_irraggiamento": victory_glow},
 }
 ## Variante usata in gioco (le altre si ascoltano in sounds/varianti con "varianti").
 FLASH_VARIANT = "d_morbido"
-VICTORY_VARIANT = "c_carillon"
+VICTORY_VARIANT = "e_irraggiamento"
 
 
 def flash():
@@ -648,7 +841,8 @@ def lowpass_rate(x, cutoff, rate):
 
 
 SFX = (jump, land, flash, flash_ready, flash_dud, drip, death, tap, button,
-       checkpoint, collect, mini_flash, victory)
+       checkpoint, collect, mini_flash, victory, step, shadow_step, push,
+       flicker_off, flicker_on, shadow_dissolve, shadow_puff)
 ALL = {f.__name__: f for f in SFX + (music, varianti)}
 
 OUT.mkdir(parents=True, exist_ok=True)

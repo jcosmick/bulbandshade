@@ -204,7 +204,7 @@ func _on_goal_reached() -> void:
 	var tween := player.enter_socket(goal.socket_position())
 	await tween.finished
 	Sfx.play("victory", 0.0, 0.0)
-	Music.duck(1.6)
+	Music.duck(1.0)
 	_light_tween = create_tween()
 	_light_tween.tween_property(_darkness, "color", LIT, 1.2)
 	_light_tween.tween_callback(_show_win_panel)
