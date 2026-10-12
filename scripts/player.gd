@@ -70,7 +70,8 @@ func _ready() -> void:
 	floor_max_angle = deg_to_rad(55.0)
 	floor_snap_length = 24.0
 	floor_constant_speed = true
-	_glow = LevelKit.make_light(self, GLOW_RADIUS, 1.0, true)
+	# Bagliore senza ombre: su alcuni telefoni le ombre 2D spengono la luce.
+	_glow = LevelKit.make_light(self, GLOW_RADIUS, 1.0, false)
 	_glow.position = LIGHT_OFFSET
 	_flash_light = LevelKit.make_light(self, flash_radius, 0.0, true)
 	_flash_light.position = LIGHT_OFFSET

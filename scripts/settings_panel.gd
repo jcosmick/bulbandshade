@@ -1,8 +1,9 @@
 class_name SettingsPanel
 extends Control
 ## Pannello "Impostazioni" in sovrimpressione: velo scuro, scheda centrata con i
-## cursori del volume (effetti e musica) e il pulsante "Chiudi" (solo icona).
-## Si apre con open() e parte nascosto; i cursori cambiano subito il volume e lo salvano.
+## cursori del volume (effetti e musica) e della luminosità e il pulsante
+## "Chiudi" (solo icona).
+## Si apre con open() e parte nascosto; ogni modifica si applica e si salva subito.
 ## In gioco set_level() mostra in alto il nome del livello e i pulsanti per
 ## tornare al menu e ricominciare il livello.
 
@@ -23,6 +24,7 @@ const CARD_WIDTH := 840.0
 
 var _sfx_slider: HSlider
 var _music_slider: HSlider
+var _brightness_slider: HSlider
 var _level_label: Label
 var _restart_button: Button
 var _home_button: Button
@@ -63,6 +65,8 @@ func _ready() -> void:
 	_sfx_slider = _volume_row(box, "Sound effects", Settings.sfx_volume, Settings.set_sfx_volume)
 	box.add_child(_spacer(24))
 	_music_slider = _volume_row(box, "Music", Settings.music_volume, Settings.set_music_volume)
+	box.add_child(_spacer(24))
+	_brightness_slider = _volume_row(box, "Brightness", Settings.brightness, Settings.set_brightness)
 	box.add_child(_spacer(40))
 
 	var buttons := HBoxContainer.new()
@@ -84,6 +88,7 @@ func open() -> void:
 	# Riallinea cursori e percentuali ai valori salvati.
 	_sfx_slider.value = Settings.sfx_volume
 	_music_slider.value = Settings.music_volume
+	_brightness_slider.value = Settings.brightness
 	visible = true
 
 

@@ -4,7 +4,11 @@ extends Node2D
 const MENU_SCENE := "res://scenes/menu.tscn"
 ## Altezza della fascia in basso riservata ai pulsanti touch.
 const CONTROLS_HEIGHT := 400.0
-const DARK := Color(0.11, 0.11, 0.17)
+## Colore del buio con luminosità minima e massima (vedi Settings.brightness).
+## Anche al minimo resta sopra la soglia in cui gli schermi AMOLED scuri
+## schiacciano tutto a nero.
+const DARK := Color(0.2, 0.2, 0.27)
+const DARK_BRIGHT := Color(0.52, 0.52, 0.6)
 const LIT := Color(0.95, 0.9, 0.82)
 ## Secondi tra il cortocircuito e la ricomparsa al checkpoint.
 const RESPAWN_DELAY := 1.0
@@ -43,6 +47,7 @@ var _follow := false
 func _ready() -> void:
 	_darkness = CanvasModulate.new()
 	add_child(_darkness)
+	Settings.brightness_changed.connect(_on_brightness_changed)
 	_camera = Camera2D.new()
 	add_child(_camera)
 	_camera.make_current()
@@ -87,11 +92,20 @@ func load_level(index: int) -> void:
 
 	if _light_tween:
 		_light_tween.kill()
-	_darkness.color = DARK
+	_darkness.color = _dark_color()
 	_win_panel.visible = false
 	_settings.set_level(level.level_name)
 	_update_flash_label()
 	_layout()
+
+
+func _dark_color() -> Color:
+	return DARK.lerp(DARK_BRIGHT, Settings.brightness)
+
+
+func _on_brightness_changed(_value: float) -> void:
+	if not won:
+		_darkness.color = _dark_color()
 
 
 func _process(delta: float) -> void:
