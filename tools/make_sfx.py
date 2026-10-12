@@ -1,6 +1,6 @@
 """Sintetizza gli effetti sonori del gioco come WAV mono 16 bit.
 
-Uso: python make_sfx.py <cartella> [nome ...]
+Uso: python tools/make_sfx.py sounds [nome ...]
 Senza nomi rigenera tutti gli effetti (la musica solo se richiesta: "music").
 Con "varianti" scrive in sounds/varianti le alternative di flash e vittoria.
 

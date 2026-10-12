@@ -1,6 +1,6 @@
 extends Node
 ## Effetti sonori (autoload): suona i suoni non posizionali e aggiunge il "tap"
-## a ogni pulsante dell'interfaccia. I WAV si rigenerano con sounds/make_sfx.py.
+## a ogni pulsante dell'interfaccia. I WAV si rigenerano con tools/make_sfx.py.
 
 const SOUNDS := {
 	"jump": preload("res://sounds/jump.wav"),

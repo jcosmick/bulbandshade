@@ -1,6 +1,6 @@
 extends Node
 ## Musica di sottofondo (autoload): la canzoncina in loop su tutte le scene.
-## Il WAV si rigenera con sounds/make_sfx.py.
+## Il WAV si rigenera con tools/make_sfx.py.
 
 const SONG := preload("res://sounds/music.wav")
 const VOLUME_DB := -6.0
