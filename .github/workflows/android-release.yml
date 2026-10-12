@@ -1,0 +1,99 @@
+name: Android release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "version/name (vuoto = lascia quello attuale)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: 4.7.2
+  PRESET: Android
+  AAB_PATH: build/BulbAndShade.aab
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Godot and export templates
+        run: |
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          cd "$RUNNER_TEMP"
+          wget -q "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          wget -q "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q "Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          sudo mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+          tpl_dir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$tpl_dir"
+          unzip -q "Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          mv templates/* "$tpl_dir/"
+
+      - name: Configure editor settings (Android SDK / Java)
+        run: |
+          mkdir -p "$HOME/.config/godot"
+          for f in editor_settings-4.tres "editor_settings-${GODOT_VERSION%.*}.tres"; do
+            cat > "$HOME/.config/godot/$f" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          EOF
+          done
+
+      - name: Bump version
+        id: version
+        run: |
+          code=$(grep -m1 '^version/code=' export_presets.cfg | cut -d= -f2)
+          code=$((code + 1))
+          sed -i "0,/^version\/code=.*/s//version\/code=${code}/" export_presets.cfg
+          if [ -n "${{ inputs.version_name }}" ]; then
+            sed -i "0,/^version\/name=.*/s//version\/name=\"${{ inputs.version_name }}\"/" export_presets.cfg
+          fi
+          name=$(grep -m1 '^version/name=' export_presets.cfg | cut -d= -f2 | tr -d '"')
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "Version $name ($code)"
+
+      - name: Import project and install Android build template
+        run: |
+          godot --headless --import || true
+          godot --headless --install-android-build-template
+          echo "org.gradle.daemon=false" >> android/build/gradle.properties
+
+      - name: Export signed AAB
+        env:
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ runner.temp }}/upload.keystore
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ secrets.KEYSTORE_USER }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$GODOT_ANDROID_KEYSTORE_RELEASE_PATH"
+          mkdir -p build
+          godot --headless --export-release "$PRESET" "$AAB_PATH"
+          test -f "$AAB_PATH"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BulbAndShade-${{ steps.version.outputs.name }}-${{ steps.version.outputs.code }}
+          path: ${{ env.AAB_PATH }}
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add export_presets.cfg
+          git commit -m "Bump Android version to ${{ steps.version.outputs.name }} (${{ steps.version.outputs.code }})"
+          git push
