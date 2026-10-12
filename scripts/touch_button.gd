@@ -8,6 +8,9 @@ extends TouchScreenButton
 const FILL_ALPHA := 0.85
 const COOLDOWN_SHADE := Color(0, 0, 0, 0.6)
 const COOLDOWN_RING := Color(1, 0.88, 0.4, 0.9)
+## Pulsazioni al secondo e ingrandimento massimo quando pulsa.
+const PULSE_RATE := 1.2
+const PULSE_SCALE := 0.12
 
 ## Metà del lato del riquadro (o raggio, se tondo).
 var radius := 100.0
@@ -15,6 +18,17 @@ var circular := false
 var icon := ""
 ## Ricarica del pulsante (1 = pronto). Sotto 1 il pulsante appare scarico.
 var progress := 1.0
+## Se true il pulsante pulsa con un'onda che si allarga, per suggerire di
+## usarlo (es. nel tutorial).
+var pulsing := false:
+	set(value):
+		if value == pulsing:
+			return
+		pulsing = value
+		_pulse_time = 0.0
+		scale = Vector2.ONE
+		queue_redraw()
+var _pulse_time := 0.0
 var _icon: Node2D
 var _normal_box: StyleBoxFlat
 var _pressed_box: StyleBoxFlat
@@ -47,9 +61,27 @@ func setup(action_name: StringName, button_radius: float, icon_name: String, sli
 	add_child(_icon)
 
 
+func _process(delta: float) -> void:
+	if not pulsing:
+		return
+	_pulse_time += delta
+	scale = Vector2.ONE * (1.0 + PULSE_SCALE * (0.5 - 0.5 * cos(_pulse_time * TAU * PULSE_RATE)))
+	queue_redraw()
+
+
 func _draw() -> void:
 	var box := _pressed_box if is_pressed() else _normal_box
 	draw_style_box(box, Rect2(-radius, -radius, radius * 2.0, radius * 2.0))
+	if pulsing:
+		# Onda che parte dal bordo, si allarga e svanisce.
+		var phase := fmod(_pulse_time * PULSE_RATE, 1.0)
+		var ring := Color(UiStyle.ACCENT, 0.9 * (1.0 - phase))
+		var grow := 8.0 + 40.0 * phase
+		if circular:
+			draw_arc(Vector2.ZERO, radius + grow, 0.0, TAU, 64, ring, 6.0, true)
+		else:
+			var r := radius + grow
+			draw_rect(Rect2(-r, -r, r * 2.0, r * 2.0), ring, false, 6.0)
 
 
 ## Scheda di UiStyle; se tonda gli angoli diventano mezzo lato (un cerchio).

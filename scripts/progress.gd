@@ -11,6 +11,10 @@ const LEVELS: Array[String] = [
 	"res://levels/level_07.tscn",
 ]
 const SAVE_PATH := "user://progress.cfg"
+## Indice del tutorial: non è in LEVELS, quindi non compare nella lista dei
+## livelli. Si gioca solo al primo avvio e, una volta finito, mai più.
+const TUTORIAL := -1
+const TUTORIAL_PATH := "res://levels/level_tutorial.tscn"
 
 ## Livello da avviare quando si apre la scena di gioco.
 var selected_level := 0
@@ -24,6 +28,7 @@ var test_level := ""
 var _best_flashes := {}
 ## Mini lampadine trovate: id -> colore (in ordine di ritrovamento).
 var _mini_bulbs := {}
+var _tutorial_done := false
 
 
 func _ready() -> void:
@@ -34,10 +39,21 @@ func _ready() -> void:
 		_best_flashes[int(key)] = int(config.get_value("best_flashes", key))
 	for key in config.get_section_keys("mini_bulbs") if config.has_section("mini_bulbs") else []:
 		_mini_bulbs[key] = config.get_value("mini_bulbs", key)
+	_tutorial_done = config.get_value("tutorial", "done", false)
 
 
 func is_completed(index: int) -> bool:
 	return _best_flashes.has(index)
+
+
+func level_path(index: int) -> String:
+	return TUTORIAL_PATH if index == TUTORIAL else LEVELS[index]
+
+
+## True al primo avvio: tutorial mai finito e nessun livello completato (chi
+## aveva già dei progressi prima che esistesse il tutorial non lo vede).
+func needs_tutorial() -> bool:
+	return not _tutorial_done and _best_flashes.is_empty()
 
 
 ## Un livello è giocabile se è il primo o se il precedente è stato completato.
@@ -58,6 +74,10 @@ func next_level() -> int:
 
 
 func complete_level(index: int, flashes: int) -> void:
+	if index == TUTORIAL:
+		_tutorial_done = true
+		_save()
+		return
 	if is_completed(index) and _best_flashes[index] <= flashes:
 		return
 	_best_flashes[index] = flashes
@@ -88,4 +108,6 @@ func _save() -> void:
 		config.set_value("best_flashes", str(key), _best_flashes[key])
 	for key in _mini_bulbs:
 		config.set_value("mini_bulbs", key, _mini_bulbs[key])
+	if _tutorial_done:
+		config.set_value("tutorial", "done", true)
 	config.save(SAVE_PATH)

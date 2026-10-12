@@ -99,14 +99,10 @@ func _walker_out_of_view() -> bool:
 	return not game.visible_world_rect().grow(40.0).has_point(_walker.global_position)
 
 
-func _end(skipped: bool) -> void:
+func _end() -> void:
 	var player: Player = game.player
-	if skipped:
-		# Ombra a metà: meglio partire puliti.
-		game.clear_shadows()
-	else:
-		# Il giocatore arriva cadendo dall'alto sul punto di partenza.
-		player.global_position += Vector2(0, -player_drop)
+	# Il giocatore arriva cadendo dall'alto sul punto di partenza.
+	player.global_position += Vector2(0, -player_drop)
 	player.visible = true
 	player.set_physics_process(true)
 

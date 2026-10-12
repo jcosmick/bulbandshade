@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://prefabs/water_pool.tscn" id="7_le33n"]
 [ext_resource type="PackedScene" path="res://prefabs/jump_arc.tscn" id="8_tkx4x"]
 [ext_resource type="Script" path="res://scripts/intro_tutorial.gd" id="9_intro"]
+[ext_resource type="Script" path="res://scripts/flash_hint.gd" id="10_hint"]
 
 [node name="LevelNew" type="Node2D" unique_id=1114354678]
 script = ExtResource("1")
@@ -70,3 +71,8 @@ position = Vector2(916, 1331)
 
 [node name="Intro" type="Node2D" parent="."]
 script = ExtResource("9_intro")
+
+[node name="FlashHint" type="Area2D" parent="."]
+position = Vector2(684, 1330)
+script = ExtResource("10_hint")
+size = Vector2(248, 180)

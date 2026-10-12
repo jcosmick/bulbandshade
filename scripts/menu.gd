@@ -72,30 +72,25 @@ func _ready() -> void:
 	column.add_child(_label("BULB & SHADE", 120, UiStyle.ACCENT))
 	column.add_child(_label("Light the way", 44, UiStyle.TEXT_DIM))
 
+	# Primo avvio: solo "Play", che fa partire il tutorial; la lista dei
+	# livelli compare quando il tutorial è finito.
+	var tutorial := Progress.needs_tutorial()
 	var play := Button.new()
-	var next := Progress.next_level()
-	play.text = "Play" if next == 0 and not Progress.is_completed(0) else "Continue · level %d" % (next + 1)
+	var next := Progress.TUTORIAL if tutorial else Progress.next_level()
+	play.text = "Play" if tutorial or (next == 0 and not Progress.is_completed(0)) else "Continue · level %d" % (next + 1)
 	play.custom_minimum_size = Vector2(620, 150)
 	play.add_theme_font_size_override("font_size", 60)
 	play.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	play.pressed.connect(_start_level.bind(next))
 	column.add_child(play)
 
-	column.add_child(_label("Levels", 48, UiStyle.TEXT))
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	column.add_child(scroll)
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(center)
-	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 30)
-	grid.add_theme_constant_override("v_separation", 30)
-	center.add_child(grid)
-	for i in Progress.LEVELS.size():
-		grid.add_child(_level_card(i))
+	if tutorial:
+		# Tiene la firma in fondo come quando c'è la lista.
+		var filler := Control.new()
+		filler.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		column.add_child(filler)
+	else:
+		_add_level_list(column)
 
 	# Firma in fondo, con un piccolo margine dal bordo inferiore.
 	var credits := _label("made with love by jcosmick", 26, UiStyle.TEXT_DIM.darkened(0.2))
@@ -181,6 +176,24 @@ func _layout() -> void:
 func _start_level(index: int) -> void:
 	Progress.selected_level = index
 	get_tree().change_scene_to_file(GAME_SCENE)
+
+
+func _add_level_list(column: VBoxContainer) -> void:
+	column.add_child(_label("Levels", 48, UiStyle.TEXT))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(scroll)
+	var center := CenterContainer.new()
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(center)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 30)
+	grid.add_theme_constant_override("v_separation", 30)
+	center.add_child(grid)
+	for i in Progress.LEVELS.size():
+		grid.add_child(_level_card(i))
 
 
 func _level_card(index: int) -> Button:

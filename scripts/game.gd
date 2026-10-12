@@ -16,6 +16,9 @@ const RESPAWN_DELAY := 1.0
 const CAMERA_FOLLOW_SPEED := 8.0
 ## Larghezza di livello mostrata sullo schermo nei livelli grandi.
 const VIEW_WIDTH := 1080.0
+## Quanto può salire la lampadina in aria prima che la telecamera la segua in
+## verticale (poco più dell'altezza di un salto): saltando la visuale resta ferma.
+const CAMERA_JUMP_MARGIN := 340.0
 
 var level_index := 0
 var level: Level
@@ -44,6 +47,8 @@ var _checkpoint: Checkpoint
 var _follow := false
 ## Cutscene: se impostato, la telecamera segue questo nodo invece della lampadina.
 var camera_focus: Node2D
+## Altezza seguita dalla telecamera: quella dell'ultimo appoggio della lampadina.
+var _focus_y := 0.0
 
 
 func _ready() -> void:
@@ -76,10 +81,11 @@ func load_level(index: int) -> void:
 	for platform in _shadow_layer.get_children():
 		platform.queue_free()
 
-	var path := Progress.test_level if Progress.test_level else Progress.LEVELS[index]
+	var path := Progress.test_level if Progress.test_level else Progress.level_path(index)
 	level = load(path).instantiate()
 	add_child(level)
 	player = level.get_node("Player")
+	_focus_y = player.global_position.y
 	goal = level.get_node("Goal")
 	player.flashed.connect(_on_player_flashed)
 	player.died.connect(_on_player_died)
@@ -116,17 +122,30 @@ func _on_brightness_changed(_value: float) -> void:
 
 func _process(delta: float) -> void:
 	_buttons["flash"].set_progress(player.flash_charge())
-	if Input.is_action_just_pressed("settings"):
+	_buttons["flash"].pulsing = player.flash_charge() >= 1.0 and _flash_hint_active()
+	# Durante le cutscene (ingranaggio nascosto) niente impostazioni né
+	# restart, anche da tastiera: ricominciare salterebbe la cutscene.
+	var cutscene: bool = not _buttons["settings"].visible
+	if Input.is_action_just_pressed("settings") and not cutscene:
 		_open_settings()
 		return
 	if Input.is_action_just_pressed("menu"):
 		go_to_menu()
 		return
-	if Input.is_action_just_pressed("restart"):
+	if Input.is_action_just_pressed("restart") and not cutscene:
 		load_level(level_index)
 		return
 	if _follow:
+		_update_focus_y()
 		_camera.position = _camera.position.lerp(_camera_target(), 1.0 - exp(-CAMERA_FOLLOW_SPEED * delta))
+
+
+## True se la lampadina è in una zona di suggerimento del flash (FlashHint).
+func _flash_hint_active() -> bool:
+	for hint in get_tree().get_nodes_in_group("flash_hints"):
+		if hint.active:
+			return true
+	return false
 
 
 func _on_checkpoint_reached(checkpoint: Checkpoint) -> void:
@@ -147,6 +166,7 @@ func _on_player_died() -> void:
 	for box in get_tree().get_nodes_in_group("push_boxes"):
 		box.reset()
 	player.respawn(_spawn_point)
+	_focus_y = player.global_position.y
 	if _follow:
 		_camera.position = _camera_target()
 
@@ -162,22 +182,19 @@ func cutscene_flash(origin: Vector2, radius: float) -> void:
 	_shadows.flash(origin, radius)
 
 
-func clear_shadows() -> void:
-	_shadows.clear()
-
-
 ## Parte del livello inquadrata dalla telecamera.
 func visible_world_rect() -> Rect2:
 	var size := get_viewport().get_visible_rect().size / _camera.zoom
 	return Rect2(_camera.get_screen_center_position() - size / 2.0, size)
 
 
-## Mostra o nasconde joystick e pulsanti di salto e flash (es. durante le cutscene).
+## Mostra o nasconde joystick, pulsanti e ingranaggio (es. durante le cutscene).
 func set_controls_visible(value: bool) -> void:
 	_joystick.release()
 	_joystick.visible = value
 	_buttons["jump"].visible = value
 	_buttons["flash"].visible = value
+	_buttons["settings"].visible = value
 
 
 func _on_goal_reached() -> void:
@@ -207,7 +224,8 @@ func _show_win_panel() -> void:
 
 
 func _on_next_pressed() -> void:
-	# Dopo l'ultimo livello il pulsante è "Play again".
+	# Dopo l'ultimo livello il pulsante è "Play again"; dopo il tutorial
+	# (indice -1) si passa al livello 1.
 	load_level(mini(level_index + 1, Progress.LEVELS.size() - 1))
 
 
@@ -253,8 +271,8 @@ func _build_hud() -> void:
 		["settings", 56.0, "gear"],
 	]:
 		var button := TouchButton.new()
-		# Il flash resta tondo, gli altri hanno la forma dei pulsanti del menu.
-		button.setup(spec[0], spec[1], spec[2], false, spec[0] == "flash")
+		# Salto e flash sono tondi, le impostazioni hanno la forma dei pulsanti del menu.
+		button.setup(spec[0], spec[1], spec[2], false, spec[0] != "settings")
 		hud.add_child(button)
 		_buttons[spec[0]] = button
 
@@ -366,13 +384,23 @@ func _layout() -> void:
 	_flash_box.position = Vector2(40, level_top + 52)
 
 
+## Aggiorna l'altezza seguita: a terra è quella della lampadina; in aria resta
+## ferma finché non si sale oltre CAMERA_JUMP_MARGIN o si scende sotto.
+func _update_focus_y() -> void:
+	var y := player.global_position.y
+	if player.is_on_floor() or y > _focus_y:
+		_focus_y = y
+	elif y < _focus_y - CAMERA_JUMP_MARGIN:
+		_focus_y = y + CAMERA_JUMP_MARGIN
+
+
 ## Posizione della telecamera che tiene la lampadina al centro dell'area di
 ## gioco (sopra i controlli) senza mostrare oltre i bordi del livello.
 func _camera_target() -> Vector2:
 	var view := get_viewport().get_visible_rect().size / _camera.zoom
 	var controls := CONTROLS_HEIGHT / _camera.zoom.y
 	var rect := level.level_rect
-	var focus := camera_focus.global_position if is_instance_valid(camera_focus) else player.global_position
+	var focus := camera_focus.global_position if is_instance_valid(camera_focus) else Vector2(player.global_position.x, _focus_y)
 	var target := focus + Vector2(0, controls / 2.0)
 	target.x = clampf(target.x, rect.position.x + view.x / 2.0, maxf(rect.position.x + view.x / 2.0, rect.end.x - view.x / 2.0))
 	target.y = clampf(target.y, rect.position.y + view.y / 2.0, rect.end.y + controls - view.y / 2.0)

@@ -27,7 +27,12 @@ const WARNING_TIME := 0.7
 const FRAME := Color(0.3, 0.25, 0.22)
 const GLASS_LIT := Color(0.85, 0.92, 1.0)
 const GLASS_DARK := Color(0.12, 0.14, 0.22)
-const DUST_COUNT := 40
+## Pulviscolo a densità fissa: un "tassello" di particelle lungo DUST_TILE px
+## ripetuto lungo il fascio e fatto scorrere, come una texture che si muove.
+const DUST_TILE := 300.0
+## Particelle per pixel quadrato di fascio.
+const DUST_DENSITY := 1.0 / 3000.0
+const DUST_SPEED := 25.0
 ## Lunghezza usata quando length = 0: oltre i bordi di qualsiasi livello.
 const MAX_LENGTH := 10000.0
 
@@ -51,7 +56,7 @@ func _ready() -> void:
 	_visual.draw.connect(_draw_beam)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(name)
-	for i in DUST_COUNT:
+	for i in maxi(1, roundi(DUST_TILE * opening * DUST_DENSITY)):
 		_dust.append(Vector2(rng.randf(), rng.randf()))
 
 
@@ -105,29 +110,76 @@ func _compute_beam() -> Array[PackedVector2Array]:
 	return beams
 
 
-func _draw_beam() -> void:
-	var intensity := 1.0 if is_lit() else 0.0
-	if not is_lit() and on_time > 0.0:
+## Luminosità del fascio disegnato (1 acceso, 0 spento, tremolio d'avviso).
+func _intensity() -> float:
+	if is_lit():
+		return 1.0
+	if on_time > 0.0:
 		# Avviso: il fascio tremola poco prima di riaccendersi.
 		var until_on := on_time + off_time - fmod(_time, on_time + off_time)
 		if until_on < WARNING_TIME:
-			intensity = 0.25 * absf(sin(until_on * 30.0))
+			return 0.25 * absf(sin(until_on * 30.0))
+	return 0.0
+
+
+## True se nelle zone sovrapposte vince il fascio di other (più luminoso, o a
+## parità quello creato prima): così le luci si intersecano senza sommarsi.
+func _yields_to(other: WindowLight, intensity: float) -> bool:
+	var theirs := other._intensity()
+	if theirs != intensity:
+		return theirs > intensity
+	return other.get_instance_id() < get_instance_id()
+
+
+## Toglie i cutter dai pezzi senza mai produrre buchi: se un cutter cade tutto
+## dentro un pezzo, il pezzo viene prima diviso in due lungo il suo centro.
+static func _subtract_no_holes(pieces: Array[PackedVector2Array], cutters: Array[PackedVector2Array]) -> Array[PackedVector2Array]:
+	for cutter in cutters:
+		var center := Vector2.ZERO
+		for v in cutter:
+			center += v
+		center /= cutter.size()
+		var clipped: Array[PackedVector2Array] = []
+		for piece in pieces:
+			var halves: Array[PackedVector2Array] = [piece]
+			if Geometry2D.clip_polygons(cutter, piece).is_empty() and not Geometry2D.intersect_polygons(piece, cutter).is_empty():
+				halves.clear()
+				var r := MAX_LENGTH * 4.0
+				for side in [r, -r]:
+					var half_plane := PackedVector2Array([center + Vector2(0, -r), center + Vector2(side, -r), center + Vector2(side, r), center + Vector2(0, r)])
+					halves.append_array(Geometry2D.intersect_polygons(piece, half_plane))
+			for half in halves:
+				clipped.append_array(Geometry2D.clip_polygons(half, cutter))
+		pieces = clipped
+	return pieces
+
+
+func _draw_beam() -> void:
+	var intensity := _intensity()
 	if intensity <= 0.0:
 		return
+	var shown := _polygons
+	for other in get_tree().get_nodes_in_group("light_beams"):
+		if other != self and other is WindowLight and other._intensity() > 0.0 and _yields_to(other, intensity):
+			shown = _subtract_no_holes(shown, other._polygons)
 	var color := Color(BEAM, BEAM.a * intensity)
-	for polygon in _polygons:
+	for polygon in shown:
 		_visual.draw_colored_polygon(polygon, color)
 	# Pulviscolo che fluttua nel fascio.
 	var dir := direction.normalized()
 	var a := global_transform * Vector2(0, -opening / 2.0)
 	var across := global_transform * Vector2(0, opening / 2.0) - a
-	for d in _dust:
-		var along := fmod(d.x * _reach + _time * 25.0, maxf(_reach, 1.0))
-		var point := a + across * d.y + dir * along + Vector2(0, sin(_time + d.x * 20.0) * 6.0)
-		for polygon in _polygons:
-			if Geometry2D.is_point_in_polygon(point, polygon):
-				_visual.draw_circle(point, 2.5, Color(1, 1, 0.9, 0.5 * intensity))
-				break
+	var dust_color := Color(1, 1, 0.9, 0.5 * intensity)
+	for tile in ceili(_reach / DUST_TILE):
+		for d in _dust:
+			var along := tile * DUST_TILE + fposmod(d.x * DUST_TILE + _time * DUST_SPEED, DUST_TILE)
+			if along > _reach:
+				continue
+			var point := a + across * d.y + dir * along + Vector2(0, sin(_time + d.x * 20.0) * 6.0)
+			for polygon in _polygons:
+				if Geometry2D.is_point_in_polygon(point, polygon):
+					_visual.draw_circle(point, 2.5, dust_color)
+					break
 
 
 func _draw() -> void:
