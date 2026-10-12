@@ -42,6 +42,8 @@ var _spawn_point := Vector2.ZERO
 var _checkpoint: Checkpoint
 ## True nei livelli più grandi dello schermo: la telecamera segue la lampadina.
 var _follow := false
+## Cutscene: se impostato, la telecamera segue questo nodo invece della lampadina.
+var camera_focus: Node2D
 
 
 func _ready() -> void:
@@ -88,7 +90,8 @@ func load_level(index: int) -> void:
 		checkpoint.reached.connect(_on_checkpoint_reached)
 	_shadows.world = level
 	_shadows.level_rect = level.level_rect
-	_joystick.release()
+	camera_focus = null
+	set_controls_visible(true)
 
 	if _light_tween:
 		_light_tween.kill()
@@ -97,6 +100,9 @@ func load_level(index: int) -> void:
 	_settings.set_level(level.level_name)
 	_update_flash_label()
 	_layout()
+	var intro := level.get_node_or_null("Intro") as Cutscene
+	if intro:
+		intro.start(self)
 
 
 func _dark_color() -> Color:
@@ -149,6 +155,29 @@ func _on_player_flashed(origin: Vector2, radius: float) -> void:
 	flash_count += 1
 	_update_flash_label()
 	_shadows.flash(origin, radius)
+
+
+## Flash di una cutscene: crea le ombre ma non conta nel punteggio.
+func cutscene_flash(origin: Vector2, radius: float) -> void:
+	_shadows.flash(origin, radius)
+
+
+func clear_shadows() -> void:
+	_shadows.clear()
+
+
+## Parte del livello inquadrata dalla telecamera.
+func visible_world_rect() -> Rect2:
+	var size := get_viewport().get_visible_rect().size / _camera.zoom
+	return Rect2(_camera.get_screen_center_position() - size / 2.0, size)
+
+
+## Mostra o nasconde joystick e pulsanti di salto e flash (es. durante le cutscene).
+func set_controls_visible(value: bool) -> void:
+	_joystick.release()
+	_joystick.visible = value
+	_buttons["jump"].visible = value
+	_buttons["flash"].visible = value
 
 
 func _on_goal_reached() -> void:
@@ -343,7 +372,8 @@ func _camera_target() -> Vector2:
 	var view := get_viewport().get_visible_rect().size / _camera.zoom
 	var controls := CONTROLS_HEIGHT / _camera.zoom.y
 	var rect := level.level_rect
-	var target := player.global_position + Vector2(0, controls / 2.0)
+	var focus := camera_focus.global_position if is_instance_valid(camera_focus) else player.global_position
+	var target := focus + Vector2(0, controls / 2.0)
 	target.x = clampf(target.x, rect.position.x + view.x / 2.0, maxf(rect.position.x + view.x / 2.0, rect.end.x - view.x / 2.0))
 	target.y = clampf(target.y, rect.position.y + view.y / 2.0, rect.end.y + controls - view.y / 2.0)
 	return target

@@ -22,6 +22,9 @@ var _knob := Vector2.ZERO
 
 
 func _input(event: InputEvent) -> void:
+	# Nascosto durante le cutscene: non prende i tocchi.
+	if not visible:
+		return
 	if event is InputEventScreenTouch:
 		if event.pressed and _touch == -1 and zone.has_point(event.position):
 			_touch = event.index
