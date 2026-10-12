@@ -262,17 +262,14 @@ def button():
 
 
 def checkpoint():
-    # Checkpoint che si accende: scatto, ronzio del filamento che si scalda, "ding-dong" in su.
-    dur = 1.5
+    # Checkpoint che si accende: scattino ovattato e "ding-dong" di kalimba un'ottava sotto
+    # (Do5 -> Fa5), corto e leggero per non coprire la musica.
+    dur = 0.6
     out = np.zeros(int(RATE * dur))
-    place(out, click(0.02, 0.003, 2500), 0.0, 0.5)
-    t = t_of(0.35)
-    hum = np.tanh(3 * np.sin(2 * np.pi * 120 * t)) * np.clip(t / 0.06, 0, 1) * np.exp(-t / 0.1)
-    place(out, lowpass(hum, 1500), 0.0, 0.25)
-    place(out, glass(C6, 0.8, 0.25), 0.04, 0.55)
-    place(out, glass(F6, 0.9, 0.4), 0.15, 0.6)
-    sparkles(out, 5, 0.18, 0.5, 0.07)
-    save("checkpoint.wav", reverb(out, 0.25, 1.0), peak=0.65)
+    place(out, lowpass(click(0.015, 0.002, 800), 2000), 0.0, 0.3)
+    place(out, kalimba(midi(72), 0.5, 0.12), 0.0, 0.5)
+    place(out, kalimba(midi(77), 0.55, 0.18), 0.08, 0.6)
+    save("checkpoint.wav", room(lowpass(out, 6000), 0.5, 0.15), peak=0.6)
 
 
 def collect():
@@ -448,6 +445,30 @@ def flash_burst():
     return room(out, 0.6, 0.22)
 
 
+def soft_tone(freq, dur, decay, bend=-2.0, bend_time=0.04):
+    """Tono rotondo che "scivola" in su fino alla nota (glide cartoon da `bend` semitoni)."""
+    t = t_of(dur)
+    phase = 2 * np.pi * np.cumsum(freq * 2 ** (bend / 12 * np.exp(-t / bend_time))) / RATE
+    x = np.sin(phase) + 0.18 * np.sin(2 * phase) * np.exp(-t / (decay * 0.5))
+    return x * env(len(t), 0.008, decay)
+
+
+def flash_soft():
+    # D: "bloop-fwoom-ting" morbido. Pop tondo senza rumore, colpetto grave, soffio che si
+    # apre come la luce, accordo Fa-La-Do-Fa che sale di un tono in 40 ms e luccichii puri.
+    dur = 1.0
+    out = np.zeros(int(RATE * dur))
+    place(out, lowpass(sweep(620, 190, 0.06) * env(int(RATE * 0.06), 0.002, 0.02), 2500), 0.0, 0.45)
+    place(out, lowpass(thump(130, 60, 0.18, 0.06), 400), 0.0, 0.5)
+    place(out, whoosh(0.35, 400, 3200, 0.1, q=0.9), 0.0, 0.12)
+    for i, (m, gain) in enumerate(((77, 0.32), (81, 0.28), (84, 0.24), (89, 0.18))):
+        place(out, soft_tone(midi(m), 0.8, 0.2), 0.008 + i * 0.01, gain)
+    for at, m in ((0.07, 96), (0.15, 101), (0.24, 93), (0.34, 98)):
+        t = t_of(0.25)
+        place(out, np.sin(2 * np.pi * midi(m) * t) * env(len(t), 0.003, 0.07), at, 0.07)
+    return room(lowpass(out, 7500), 0.8, 0.22)
+
+
 def victory_kalimba():
     # A: mini-finale nello stile della musica: arpeggio Do-Fa-La-Do sopra il basso in Do
     # che si risolve sull'accordo di Fa, con pad caldo e tre note che luccicano.
@@ -498,12 +519,13 @@ def victory_carillon():
 
 
 VARIANTS = {
-    "flash": {"a_kalimba": flash_kalimba, "b_synth": flash_stab, "c_bagliore": flash_burst},
+    "flash": {"a_kalimba": flash_kalimba, "b_synth": flash_stab, "c_bagliore": flash_burst,
+              "d_morbido": flash_soft},
     "victory": {"a_kalimba": victory_kalimba, "b_fanfara": victory_fanfare,
                 "c_carillon": victory_carillon},
 }
 ## Variante usata in gioco (le altre si ascoltano in sounds/varianti con "varianti").
-FLASH_VARIANT = "c_bagliore"
+FLASH_VARIANT = "d_morbido"
 VICTORY_VARIANT = "c_carillon"
 
 

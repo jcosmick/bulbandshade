@@ -20,6 +20,8 @@ const SOUNDS := {
 ## Pulsanti touch di gioco che hanno già un suono proprio (o nessuno).
 const SILENT_ACTIONS := [&"jump", &"flash"]
 const POOL_SIZE := 12
+## Suoni che fanno spazio a sé stessi nella musica (ovunque suonino: gioco e menu).
+const DUCKING := ["flash"]
 
 var _players: Array[AudioStreamPlayer] = []
 var _next := 0
@@ -45,6 +47,8 @@ func play(sound: String, volume_db := 0.0, pitch_jitter := 0.05, pitch := 1.0) -
 	player.volume_db = volume_db
 	player.pitch_scale = pitch * randf_range(1.0 - pitch_jitter, 1.0 + pitch_jitter)
 	player.play()
+	if sound in DUCKING:
+		Music.duck_flash()
 
 
 ## Lettore posizionale per suoni che provengono da un punto del livello.

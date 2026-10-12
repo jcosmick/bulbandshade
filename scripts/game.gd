@@ -153,7 +153,7 @@ func _on_checkpoint_reached(checkpoint: Checkpoint) -> void:
 		_checkpoint.active = false
 	_checkpoint = checkpoint
 	checkpoint.active = true
-	Sfx.play("checkpoint", -4.0, 0.0)
+	Sfx.play("checkpoint", -6.0, 0.0)
 	_spawn_point = checkpoint.spawn_position()
 
 
