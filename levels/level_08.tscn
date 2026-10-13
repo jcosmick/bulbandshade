@@ -26,6 +26,8 @@
 [ext_resource type="PackedScene" path="res://prefabs/props/pipe.tscn" id="24_tp4tc"]
 [ext_resource type="PackedScene" path="res://prefabs/gizmos/jump_arc.tscn" id="25_i0ocl"]
 [ext_resource type="PackedScene" path="res://prefabs/gameplay/mini_bulb.tscn" id="26_174un"]
+[ext_resource type="PackedScene" path="res://prefabs/level_structures/hanging_crate.tscn" id="27_174un"]
+[ext_resource type="PackedScene" path="res://prefabs/props/wall_socket.tscn" id="28_8rf2p"]
 
 [node name="LevelNew" type="Node2D" unique_id=1709908472]
 script = ExtResource("1")
@@ -160,11 +162,11 @@ windows_open = false
 
 [node name="Vent" parent="." unique_id=1007811661 instance=ExtResource("16_7kdks")]
 z_index = -8
-position = Vector2(1062, 1141)
+position = Vector2(1066, 1271)
 
 [node name="Vent2" parent="." unique_id=1258150103 instance=ExtResource("16_7kdks")]
 z_index = -8
-position = Vector2(1964, 1141)
+position = Vector2(1965, 1294)
 
 [node name="Vine" parent="." unique_id=1140306563 instance=ExtResource("17_f4orn")]
 z_index = -5
@@ -247,7 +249,7 @@ position = Vector2(2806, 849)
 size = Vector2(800, 30)
 
 [node name="JumpArc" parent="." unique_id=1505462864 instance=ExtResource("25_i0ocl")]
-position = Vector2(3202, 818)
+position = Vector2(3782, 1324)
 
 [node name="JumpArc2" parent="." unique_id=263437522 instance=ExtResource("25_i0ocl")]
 position = Vector2(574, 810)
@@ -268,10 +270,107 @@ position = Vector2(2148, 544)
 position = Vector2(3561, 967)
 
 [node name="Crate5" parent="." unique_id=1565046211 instance=ExtResource("11_ck2xc")]
-position = Vector2(3522, 1375)
+position = Vector2(2534, 1375)
 size = Vector2(150, 90)
 
 [node name="MiniBulb" parent="." unique_id=943388293 instance=ExtResource("26_174un")]
 position = Vector2(2586, 206)
 id = "level08_purple"
 color = Color(0.7649443, 0.26576748, 0.80302566, 1)
+
+[node name="HangingCrate2" parent="." unique_id=1943402225 instance=ExtResource("27_174un")]
+position = Vector2(3967, 1111)
+chain_length = 580.0
+
+[node name="Block4" parent="." unique_id=2091583155 instance=ExtResource("6_fenrf")]
+position = Vector2(3709, 1381)
+size = Vector2(200, 90)
+
+[node name="WaterBasin2" parent="." unique_id=1130818605 instance=ExtResource("8_oxu25")]
+position = Vector2(3925, 1336)
+cut_floor = false
+size = Vector2(232, 90)
+left_wall = false
+right_wall = false
+
+[node name="GroundPlant3" parent="." unique_id=1965191253 instance=ExtResource("14_u7eqt")]
+z_index = -5
+position = Vector2(2793, 1421)
+kind = "fern"
+
+[node name="GroundPlant5" parent="." unique_id=1349322361 instance=ExtResource("14_u7eqt")]
+z_index = -5
+position = Vector2(3225, 1423)
+kind = "banana"
+height = 420.0
+pot_width = 80.0
+
+[node name="GroundPlant4" parent="." unique_id=1995625087 instance=ExtResource("14_u7eqt")]
+z_index = -5
+position = Vector2(2919, 1421)
+kind = "monstera"
+height = 120.0
+pot = "planter"
+pot_width = 50.0
+pattern = 8
+
+[node name="Jar2" parent="." unique_id=1238149875 instance=ExtResource("21_fs5cg")]
+z_index = -4
+position = Vector2(3394, 1420)
+
+[node name="Jar3" parent="." unique_id=386272887 instance=ExtResource("21_fs5cg")]
+z_index = -4
+position = Vector2(3434, 1420)
+
+[node name="Vine3" parent="." unique_id=912071470 instance=ExtResource("17_f4orn")]
+z_index = -5
+position = Vector2(3463, 1042)
+length = 120.0
+density = 4.0
+
+[node name="Vine4" parent="." unique_id=2003302377 instance=ExtResource("17_f4orn")]
+z_index = -5
+position = Vector2(2478, 863)
+width = 300.0
+length = 288.0
+density = 2.0
+flowers = true
+pattern = 5
+
+[node name="WallSocket" parent="." unique_id=1871948995 instance=ExtResource("28_8rf2p")]
+z_index = -8
+position = Vector2(3133, 1337)
+kind = "double_socket"
+
+[node name="WallSocket2" parent="." unique_id=883983238 instance=ExtResource("28_8rf2p")]
+z_index = -8
+position = Vector2(416, 1248)
+kind = "switch"
+
+[node name="Vine5" parent="." unique_id=1133029901 instance=ExtResource("17_f4orn")]
+z_index = -5
+position = Vector2(3749, 494)
+width = 20.0
+density = 8.0
+leaf_style = "heart"
+
+[node name="Vine6" parent="." unique_id=1633577931 instance=ExtResource("17_f4orn")]
+z_index = -5
+position = Vector2(2490, 290)
+length = 180.0
+density = 2.0
+leaf_style = "heart"
+pattern = -1
+
+[node name="SackPile2" parent="." unique_id=1757680317 instance=ExtResource("18_0gjl2")]
+z_index = -5
+position = Vector2(2224, 1090)
+rows = 1
+
+[node name="GroundPlant6" parent="." unique_id=1960271514 instance=ExtResource("14_u7eqt")]
+z_index = -5
+position = Vector2(2243, 1087)
+kind = "cactus"
+height = 120.0
+pot = "planter"
+pot_width = 45.0
