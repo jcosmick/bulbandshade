@@ -29,6 +29,8 @@ func _ready() -> void:
 	# Disegnata sopra il buio, così l'acqua si vede sempre.
 	_visual = LevelKit.make_overlay(self, true, 2)
 	_visual.draw.connect(_draw_water.bind(_visual))
+	# Solo le onde: l'area che fa morire la lampadina resta sempre attiva.
+	LevelKit.process_on_screen(self, Rect2(-size / 2.0, size))
 
 
 func _process(delta: float) -> void:

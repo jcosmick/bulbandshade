@@ -67,6 +67,32 @@ static func make_light(parent: Node, radius: float, energy: float, shadows: bool
 	return light
 
 
+## Margine (px) attorno allo schermo entro cui un elemento conta già come
+## visibile: si rimette in moto un attimo prima di entrare nell'inquadratura.
+const ON_SCREEN_MARGIN := 96.0
+
+
+## Ferma _process e _physics_process di `node` finché `rect` (in coordinate
+## locali di node: tutto ciò che disegna) è fuori dall'inquadratura, così gli
+## elementi lontani dalla telecamera non costano nulla. Ferma solo gli script:
+## collisioni e aree restano attive. Da usare solo per animazioni che possono
+## congelarsi senza conseguenze sul gioco (non per timer, casse in caduta e
+## simili). Va chiamata in _ready, solo in gioco.
+static func process_on_screen(node: Node2D, rect: Rect2) -> void:
+	var notifier := VisibleOnScreenNotifier2D.new()
+	notifier.rect = rect.grow(ON_SCREEN_MARGIN)
+	notifier.screen_entered.connect(func() -> void: _set_processing(node, true))
+	notifier.screen_exited.connect(func() -> void: _set_processing(node, false))
+	node.add_child(notifier, false, Node.INTERNAL_MODE_BACK)
+	# Parte fermo: se è inquadrato screen_entered arriva al primo frame.
+	_set_processing(node, false)
+
+
+static func _set_processing(node: Node, on: bool) -> void:
+	node.set_process(on)
+	node.set_physics_process(on)
+
+
 ## Nodo di disegno su un layer sopra il buio della stanza (l'acqua e la luce
 ## delle finestre devono vedersi sempre). Con follow_owner disegna nelle
 ## coordinate locali di owner, altrimenti in coordinate del livello.

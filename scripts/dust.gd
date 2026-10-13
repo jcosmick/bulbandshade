@@ -51,6 +51,7 @@ func _ready() -> void:
 			"radius": randf_range(MIN_RADIUS, MAX_RADIUS),
 			"phase": randf() * TAU,
 		})
+	LevelKit.process_on_screen(self, Rect2(-size / 2.0, size))
 
 
 func _process(delta: float) -> void:

@@ -29,6 +29,8 @@ func _ready() -> void:
 	_hint_light = LevelKit.make_light(self, 170.0, 0.5, false)
 	_hint_light.position = Vector2(0, -20)
 	body_entered.connect(_on_body_entered)
+	# Solo il bagliore pulsante: l'area di arrivo resta sempre attiva.
+	LevelKit.process_on_screen(self, Rect2(-170, -190, 340, 340))
 
 
 func socket_position() -> Vector2:

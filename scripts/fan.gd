@@ -48,6 +48,8 @@ func _ready() -> void:
 	_grind = _make_player("fan_grind")
 	_air = _make_player("fan_air")
 	_update_sound()
+	var half := radius + FRAME_MARGIN * 2.0
+	LevelKit.process_on_screen(self, Rect2(-half, -half, half * 2.0, half * 2.0))
 
 
 func _process(delta: float) -> void:

@@ -59,6 +59,7 @@ func _ready() -> void:
 	collision.position = Vector2(0, length / 2.0)
 	_area.add_child(collision)
 	add_child(_area)
+	LevelKit.process_on_screen(self, Rect2(-length, 0, length * 2.0, length))
 
 
 func _physics_process(delta: float) -> void:

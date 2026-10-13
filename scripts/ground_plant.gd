@@ -91,6 +91,8 @@ func _ready() -> void:
 	collision.position = Vector2(0, -height / 2.0)
 	_area.add_child(collision)
 	add_child(_area)
+	var reach := maxf(height, pot_width) * 0.75
+	LevelKit.process_on_screen(self, Rect2(-reach, -height * 1.15, reach * 2.0, height * 1.15))
 
 
 func _physics_process(delta: float) -> void:

@@ -27,6 +27,9 @@ func _ready() -> void:
 	_sprite = MiniBulbSprite.new()
 	_sprite.color = color
 	add_child(_sprite)
+	var bounds := Rect2(-60, -60, 120, 120)
+	LevelKit.process_on_screen(self, bounds)
+	LevelKit.process_on_screen(_sprite, bounds)
 	if Progress.has_mini_bulb(id):
 		_taken = true
 		_sprite.modulate.a = 0.3
