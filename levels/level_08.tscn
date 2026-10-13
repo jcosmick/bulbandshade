@@ -11,7 +11,6 @@
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/glass_cube.tscn" id="10_ck2xc"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/crate.tscn" id="11_ck2xc"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/glass_pane.tscn" id="12_tir3y"]
-[ext_resource type="PackedScene" path="res://prefabs/gizmos/jump_arc.tscn" id="13_7nmir"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/tall_crate.tscn" id="14_8symd"]
 [ext_resource type="PackedScene" path="res://prefabs/props/ground_plant.tscn" id="14_u7eqt"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/push_box.tscn" id="15_1yggu"]
@@ -21,6 +20,10 @@
 [ext_resource type="PackedScene" path="res://prefabs/props/barrel.tscn" id="19_fs5cg"]
 [ext_resource type="PackedScene" path="res://prefabs/props/cobweb_spider.tscn" id="20_0gjl2"]
 [ext_resource type="PackedScene" path="res://prefabs/props/jar.tscn" id="21_fs5cg"]
+[ext_resource type="PackedScene" path="res://prefabs/level_structures/skylight.tscn" id="22_fs5cg"]
+[ext_resource type="PackedScene" path="res://prefabs/level_structures/water_drip.tscn" id="23_oyse4"]
+[ext_resource type="PackedScene" path="res://prefabs/gameplay/checkpoint.tscn" id="24_oyse4"]
+[ext_resource type="PackedScene" path="res://prefabs/props/pipe.tscn" id="24_tp4tc"]
 
 [node name="LevelNew" type="Node2D" unique_id=1709908472]
 script = ExtResource("1")
@@ -30,7 +33,9 @@ level_rect = Rect2(0, 0, 4080, 1520)
 [node name="Background" type="Node2D" parent="." unique_id=1968676260]
 z_index = -10
 script = ExtResource("2")
+style = "greenhouse"
 rect = Rect2(0, 0, 4090, 1520)
+pattern = 9
 
 [node name="Ceiling" type="StaticBody2D" parent="." unique_id=1111311500]
 position = Vector2(2040, 40)
@@ -148,10 +153,7 @@ position = Vector2(120, 1029)
 
 [node name="FlashPreview" parent="." unique_id=916005369 instance=ExtResource("9_gaaq0")]
 z_index = 50
-position = Vector2(272, 1418)
-
-[node name="JumpArc2" parent="." unique_id=1081876331 instance=ExtResource("13_7nmir")]
-position = Vector2(224, 598)
+position = Vector2(1339, 1331)
 
 [node name="Vent" parent="." unique_id=1007811661 instance=ExtResource("16_7kdks")]
 z_index = -8
@@ -208,3 +210,24 @@ z_index = -5
 position = Vector2(463, 845)
 height = 380.0
 pot_width = 130.0
+
+[node name="Skylight" parent="." unique_id=1331561383 instance=ExtResource("22_fs5cg")]
+position = Vector2(1756, 80)
+opening = 620.0
+on_time = 1.5
+off_time = 3.0
+
+[node name="WaterDrip" parent="." unique_id=588235082 instance=ExtResource("23_oyse4")]
+position = Vector2(1502, 371)
+interval = 1.4
+mount = "wall_left"
+pipe_length = 290.0
+
+[node name="Pipe" parent="." unique_id=2096009929 instance=ExtResource("24_tp4tc")]
+z_index = -6
+position = Vector2(1162, 234)
+points = PackedVector2Array(0, 0, 159.33618, 0, 160, -156)
+valve = true
+
+[node name="Checkpoint" parent="." unique_id=1627458432 instance=ExtResource("24_oyse4")]
+position = Vector2(2502, 1420)

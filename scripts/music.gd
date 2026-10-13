@@ -3,7 +3,7 @@ extends Node
 ## Il WAV si rigenera con tools/make_sfx.py.
 
 const SONG := preload("res://sounds/music.wav")
-const VOLUME_DB := -6.0
+const VOLUME_DB := -20.0
 ## Di quanto si abbassa la musica mentre suona un jingle (es. la vittoria).
 const DUCK_DB := -18.0
 ## Duck "spettrale" a ogni flash: invece di abbassare tutta la musica scava solo le

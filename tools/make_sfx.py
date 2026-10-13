@@ -465,7 +465,7 @@ def saw(freq, dur, detune=0.0):
 
 
 def kalimba(freq, dur, decay=0.45):
-    """Lo stesso strumento della musica: tono rotondo + "tink" metallico armonico."""
+    """Kalimba (come la prima versione della musica): tono rotondo + "tink" metallico armonico."""
     t = t_of(dur)
     x = np.sin(2 * np.pi * freq * t) * np.exp(-t / decay)
     x += 0.35 * np.sin(2 * np.pi * freq * 5.4 * t) * np.exp(-t / 0.03)
@@ -597,7 +597,7 @@ def flash_soft():
 
 
 def victory_kalimba():
-    # A: mini-finale nello stile della musica: arpeggio Do-Fa-La-Do sopra il basso in Do
+    # A: mini-finale nello stile della prima musica (kalimba): arpeggio Do-Fa-La-Do sopra il basso in Do
     # che si risolve sull'accordo di Fa, con pad caldo e tre note che luccicano.
     dur = 3.0
     out = np.zeros(int(RATE * dur))
@@ -741,93 +741,347 @@ def varianti():
 
 
 def music():
-    """Canzoncina in loop: kalimba su accordi jazz morbidi, swing leggero, Fa maggiore."""
-    rate = 22050
-    bpm = 88
-    beat = 60 / bpm
-    bars = 16
-    length = int(rate * beat * 4 * bars)
-    tail = int(rate * 3)
-    out = np.zeros(length + tail)
+    """Tema di "Bulb & Shade": loop di 32 battute (~85 s) tra Re minore e Fa maggiore.
 
-    def midi(m):
+    Quattro sezioni da 8 battute che raccontano il gioco:
+    A  "ombra": Re minore. Un orologio ticchetta nella stanza vuota, una marimba ovattata
+       gira come un ingranaggio lontano e la celesta (la lampadina, vetro) sale Re-Fa-La
+       e ricade nel buio.
+    B  "luce": un luccichio e si accende tutto. Fa maggiore, piano elettrico, batteria,
+       la melodia si apre in alto e un carillon la raddoppia come un riflesso.
+    A' l'ombra torna, ma ora con il ritmo e un controcanto di carillon: l'ombra si usa.
+    C  "la salita": il basso sale di grado (Sol La Sib Do Re), la melodia ripete il suo
+       slancio sempre più in alto fino al Fa6, poi respira e rientra nel loop.
+    Tutto diatonico a Fa maggiore: flash, vittoria e checkpoint stanno sempre in tono.
+    """
+    rate = 32000
+    bpm = 90
+    beat = 60 / bpm
+    bars = 32
+    length = int(round(rate * beat * 4 * bars))
+    tail = int(rate * 4)
+    dry = np.zeros(length + tail)
+    send = np.zeros(length + tail)
+    mrng = np.random.default_rng(1902)
+
+    def hz(m):
         return 440 * 2 ** ((m - 69) / 12)
 
-    def swing(at):
-        # Le crome in levare arrivano un po' in ritardo (swing).
-        whole = np.floor(at)
-        return whole + 0.62 if abs(at - whole - 0.5) < 1e-6 else at
+    def ts(sec):
+        return np.arange(int(rate * sec)) / rate
 
-    def put(x, at_beat, gain):
-        i = int(rate * swing(at_beat) * beat)
-        out[i:i + len(x)] += x[: len(out) - i] * gain
+    def damp(t, beats, release):
+        """Smorzatore: la nota suona libera fino alla sua durata, poi si spegne."""
+        off = beats * beat
+        return np.where(t < off, 1.0, np.exp(-(t - off) / release))
 
-    def kalimba(m, beats):
-        n = int(rate * (beats * beat + 1.2))
-        t = np.arange(n) / rate
-        f = midi(m)
-        x = np.sin(2 * np.pi * f * t) * np.exp(-t / 0.45)
-        x += 0.35 * np.sin(2 * np.pi * f * 5.4 * t) * np.exp(-t / 0.03)  # "tink" metallico
-        x += 0.15 * np.sin(2 * np.pi * f * 2 * t) * np.exp(-t / 0.2)
-        return x * np.clip(t / 0.003, 0, 1)
+    def put(x, at_beat, gain, verb=0.25, humanize=0.004):
+        # Crome in levare un filo in ritardo (swing leggero) e micro-imprecisioni umane.
+        whole = np.floor(at_beat + 1e-9)
+        frac = at_beat - whole
+        if abs(frac - 0.5) < 1e-6:
+            frac = 0.56
+        i = max(0, int(rate * ((whole + frac) * beat + mrng.uniform(-humanize, humanize))))
+        m = min(len(x), len(dry) - i)
+        dry[i:i + m] += x[:m] * gain
+        send[i:i + m] += x[:m] * gain * verb
 
-    def pluck_bass(m, beats):
-        n = int(rate * (beats * beat + 0.3))
-        t = np.arange(n) / rate
-        f = midi(m)
-        x = np.sin(2 * np.pi * f * t) + 0.3 * np.sin(2 * np.pi * f * 2 * t) * np.exp(-t / 0.08)
-        return x * np.clip(t / 0.005, 0, 1) * np.exp(-t / 0.35)
+    def spectral(x, lo=None, hi=None):
+        """Filtro a fase zero nel dominio della frequenza (circolare: perfetto per un loop)."""
+        f = np.fft.rfftfreq(len(x), 1 / rate)
+        g = np.ones(len(f))
+        if hi:
+            g /= np.sqrt(1 + (f / hi) ** 4)
+        if lo:
+            g /= np.sqrt(1 + (lo / np.maximum(f, 1e-3)) ** 4)
+        return np.fft.irfft(np.fft.rfft(x) * g, len(x))
+
+    # --- Strumenti -----------------------------------------------------------------
+    def celesta(m, beats):
+        """La lampadina: campanello di vetro armonico, intonato, con la punta che brilla."""
+        f = hz(m)
+        t = ts(beats * beat + 1.2)
+        x = np.sin(2 * np.pi * f * t) * np.exp(-t / 1.1)
+        x += 0.3 * np.sin(2 * np.pi * 2 * f * t) * np.exp(-t / 0.35)
+        x += 0.16 * np.sin(2 * np.pi * 4 * f * t) * np.exp(-t / 0.07)
+        return x * damp(t, beats, 0.22) * np.clip(t / 0.002, 0, 1)
+
+    def vibes(m, beats):
+        """Vibrafono col motorino: il calore della luce accesa sotto la celesta."""
+        f = hz(m)
+        t = ts(beats * beat + 1.2)
+        x = np.sin(2 * np.pi * f * t) + 0.2 * np.sin(2 * np.pi * 4 * f * t) * np.exp(-t / 0.1)
+        x *= 1 + 0.22 * np.sin(2 * np.pi * 5.2 * t)
+        return x * np.exp(-t / 1.6) * damp(t, beats, 0.3) * np.clip(t / 0.003, 0, 1)
+
+    def music_box(m):
+        f = hz(m)
+        t = ts(1.6)
+        x = np.sin(2 * np.pi * f * t) * np.exp(-t / 0.7)
+        x += 0.3 * np.sin(2 * np.pi * 3 * f * t) * np.exp(-t / 0.08)
+        return x * np.clip(t / 0.001, 0, 1)
+
+    def mallet(m):
+        """Marimba ovattata: l'ingranaggio della fabbrica, corto e legnoso."""
+        f = hz(m)
+        t = ts(0.5)
+        x = np.sin(2 * np.pi * f * t) * np.exp(-t / 0.15)
+        x += 0.22 * np.sin(2 * np.pi * 4 * f * t) * np.exp(-t / 0.02)
+        return x * np.clip(t / 0.0015, 0, 1)
+
+    def bass(m, beats):
+        """Basso pizzicato tondo; le armoniche lo fanno sentire anche sul telefono."""
+        f = hz(m)
+        t = ts(beats * beat + 0.3)
+        x = np.sin(2 * np.pi * f * t)
+        x += 0.5 * np.sin(2 * np.pi * 2 * f * t) * np.exp(-t / 0.3)
+        x += 0.22 * np.sin(2 * np.pi * 3 * f * t) * np.exp(-t / 0.1)
+        x *= np.exp(-t / 1.0) * damp(t, beats, 0.05) * np.clip(t / 0.006, 0, 1)
+        return np.tanh(1.4 * x)
+
+    def epiano(notes, beats):
+        """Piano elettrico (FM): il tepore della stanza illuminata."""
+        t = ts(beats * beat + 1.0)
+        x = np.zeros(len(t))
+        for m in notes:
+            f = hz(m)
+            x += np.sin(2 * np.pi * f * t + 1.0 * np.exp(-t / 0.2) * np.sin(2 * np.pi * f * t))
+        x *= 1 + 0.07 * np.sin(2 * np.pi * 4.5 * t)
+        return x * np.exp(-t / 1.4) * damp(t, beats, 0.12) * np.clip(t / 0.004, 0, 1)
 
     def pad(notes, beats):
+        """Ombra: dente di sega morbido (poche armoniche), due voci leggermente stonate."""
+        t = ts(beats * beat + 0.8)
+        x = np.zeros(len(t))
+        for m in notes:
+            for det in (0.997, 1.003):
+                ph = mrng.uniform(0, 2 * np.pi)
+                for k in range(1, 6):
+                    x += np.sin(2 * np.pi * hz(m) * det * k * t + ph * k) / k ** 1.8
+        return x * np.clip(t / 0.6, 0, 1) * damp(t, beats, 0.5)
+
+    def kick():
+        t = ts(0.35)
+        f = 48 + 70 * np.exp(-t / 0.03)
+        x = np.sin(2 * np.pi * np.cumsum(f) / rate) * np.exp(-t / 0.2)
+        x += 0.3 * np.sin(4 * np.pi * np.cumsum(f) / rate) * np.exp(-t / 0.06)
+        return np.tanh(1.5 * x) * np.clip(t / 0.001, 0, 1)
+
+    def tick(f0):
+        """Tic-tac dell'orologio / colpo di bordo: legno piccolo e asciutto."""
+        t = ts(0.12)
+        x = np.sin(2 * np.pi * f0 * t) * np.exp(-t / 0.012)
+        x += 0.5 * np.sin(2 * np.pi * f0 * 1.73 * t) * np.exp(-t / 0.006)
+        x += 0.3 * mrng.standard_normal(len(t)) * np.exp(-t / 0.002)
+        return x
+
+    hat_noise = mrng.standard_normal(int(rate * 0.08))
+
+    def hat(decay=0.018):
+        t = ts(0.08)
+        x = np.diff(np.diff(hat_noise), prepend=0)  # rumore schiarito: resta solo il "tss"
+        return x[:len(t)] * np.exp(-t[:len(x)] / decay) / 4
+
+    def clank():
+        """Tubo di metallo colpito lontano, in fondo al capannone."""
+        t = ts(1.5)
+        x = np.zeros(len(t))
+        for ratio, amp, d in ((1, 1.0, 0.5), (2.76, 0.6, 0.3), (5.40, 0.35, 0.15), (8.93, 0.2, 0.08)):
+            x += amp * np.sin(2 * np.pi * 196 * ratio * t) * np.exp(-t / d)
+        return spectral(x * np.clip(t / 0.002, 0, 1), hi=2500)
+
+    def riser(beats):
+        """Soffio che sale verso il flash."""
         n = int(rate * beats * beat)
         t = np.arange(n) / rate
-        x = sum(np.sin(2 * np.pi * midi(m) * t) + np.sin(2 * np.pi * midi(m) * 1.004 * t)
-                for m in notes)
-        attack = np.clip(t / 0.35, 0, 1)
-        release = np.clip((t[-1] - t) / 0.3, 0, 1)
-        return x * attack * release
+        x = mrng.standard_normal(n)
+        y = np.empty(n)
+        acc = 0.0
+        alpha = 1 - np.exp(-2 * np.pi * (200 * 30 ** (t / t[-1])) / rate)
+        for i in range(n):
+            acc += alpha[i] * (x[i] - acc)
+            y[i] = acc
+        return y * (t / t[-1]) ** 2
 
-    # Accordi: (basso, voci del pad).
-    F, Am, Bb, C7, Dm, Gm = ((41, (57, 60, 64)), (45, (55, 60, 64)), (46, (57, 62, 65)),
-                             (48, (55, 58, 64)), (50, (57, 60, 65)), (43, (58, 62, 65)))
-    chords = [F, Am, Bb, C7, F, Dm, Gm, C7, Bb, Am, Gm, F, Bb, C7, F, C7]
-    # Melodia per battuta: (beat, nota MIDI, durata in beat).
-    melody = [
-        [(0, 81, 1), (1, 84, .5), (1.5, 81, .5), (2, 79, 1), (3, 77, 1)],
-        [(0, 76, 1.5), (1.5, 77, .5), (2, 79, 2)],
-        [(0, 77, .5), (.5, 79, .5), (1, 81, 1), (2, 86, 1), (3, 84, 1)],
-        [(0, 82, 1), (1, 81, .5), (1.5, 79, .5), (2, 76, 2)],
-        [(0, 81, 1), (1, 84, .5), (1.5, 86, .5), (2, 88, 1.5), (3.5, 86, .5)],
-        [(0, 84, 1), (1, 81, 1), (2, 77, 2)],
-        [(0, 82, .5), (.5, 81, .5), (1, 79, .5), (1.5, 77, .5), (2, 74, 1), (3, 79, 1)],
-        [(0, 76, 3), (3, 72, 1)],
-        [(0, 74, .5), (.5, 77, .5), (1, 81, 1), (2, 82, 1), (3, 81, .5), (3.5, 77, .5)],
-        [(0, 79, 1), (1, 76, 1), (2, 72, 2)],
-        [(0, 74, .5), (.5, 77, .5), (1, 82, 1), (2, 81, 1), (3, 79, 1)],
-        [(0, 77, 1), (1, 81, 1), (2, 84, 2)],
-        [(0, 86, 1), (1, 84, .5), (1.5, 82, .5), (2, 81, 1), (3, 77, 1)],
-        [(0, 79, 1), (1, 82, 1), (2, 88, 1), (3, 86, .5), (3.5, 84, .5)],
-        [(0, 81, 2), (2, 77, 1), (3, 76, 1)],
-        [(0, 79, 1), (1, 76, 1), (2, 72, 1), (3, 79, 1)],
+    def shimmer(notes, dur):
+        """La luce che si accende: parziali alti che tremolano piano."""
+        t = ts(dur)
+        x = np.zeros(len(t))
+        for m in notes:
+            trem = 1 + 0.35 * np.sin(2 * np.pi * mrng.uniform(5, 8) * t + mrng.uniform(0, 6))
+            x += np.sin(2 * np.pi * hz(m) * t) * trem
+        return x * np.clip(t / 0.08, 0, 1) * np.exp(-t / (dur * 0.35))
+
+    # --- Armonia -------------------------------------------------------------------
+    # Accordo: (basso, voci). Le voci stanno tra Re3 e Sol4, sotto la melodia.
+    Dm9 = (50, (53, 57, 60, 64))
+    Dm7 = (50, (53, 57, 60, 65))
+    Bbmaj7 = (46, (53, 57, 58, 62))
+    Bbmaj9 = (46, (53, 57, 60, 62))
+    Gm9 = (43, (50, 53, 57, 58))
+    Gm7 = (43, (50, 53, 55, 58))
+    Am7 = (45, (52, 55, 57, 60))
+    C6 = (48, (52, 55, 57, 60))
+    Csus = (48, (53, 55, 60, 65))
+    C = (48, (52, 55, 60, 64))
+    Fmaj7 = (41, (53, 57, 60, 64))
+    C_E = (52, (55, 60, 62, 67))
+    # Un accordo per battuta; una coppia = sospensione che si risolve a metà battuta.
+    A = [Dm9, Bbmaj7, Gm9, Am7, Dm9, Bbmaj7, Gm7, (Csus, C)]
+    B = [Fmaj7, C_E, Dm7, Bbmaj9, Am7, Gm7, Bbmaj7, (Csus, C)]
+    Cs = [Gm7, Am7, Bbmaj7, C6, Dm9, Bbmaj7, Gm9, (Csus, C)]
+    chords = A + B + A + Cs
+
+    # --- Melodia: (beat, nota, durata) per battuta ------------------------------------
+    mel_A = [
+        [(1.5, 74, .5), (2, 77, .5), (2.5, 81, 1.5)],
+        [(0, 81, 1.5), (1.5, 79, .5), (2, 77, 1), (3, 74, 1)],
+        [(1.5, 74, .5), (2, 77, .5), (2.5, 81, .5), (3, 84, 1)],
+        [(0, 81, 1), (1, 79, 1), (2, 76, 2)],
+        [(1.5, 74, .5), (2, 77, .5), (2.5, 81, 1.5)],
+        [(0, 86, 1.5), (1.5, 84, .5), (2, 81, 1), (3, 77, 1)],
+        [(0, 79, 1), (1, 82, 1), (2, 81, .5), (2.5, 79, .5), (3, 77, 1)],
+        [(0, 77, 2), (2, 76, 2)],
     ]
-    noise = rng.standard_normal(int(rate * 0.06))
-    shaker = (noise - lowpass_rate(noise, 6000, rate)) * np.exp(-np.arange(len(noise)) / (rate * 0.012))
-    for bar, ((root, voices), notes) in enumerate(zip(chords, melody)):
+    mel_B = [
+        [(0, 81, 1.5), (1.5, 84, .5), (2, 88, 2)],
+        [(0, 86, 1), (1, 84, 1), (2, 79, 2)],
+        [(0, 81, 1), (1, 84, .5), (1.5, 86, .5), (2, 89, 1.5), (3.5, 88, .5)],
+        [(0, 86, 2), (2, 84, 1), (3, 81, 1)],
+        [(0, 84, 1.5), (1.5, 81, .5), (2, 79, 1), (3, 76, 1)],
+        [(0, 77, 1), (1, 79, .5), (1.5, 82, .5), (2, 86, 2)],
+        [(0, 84, 1), (1, 81, 1), (2, 82, .5), (2.5, 81, .5), (3, 79, 1)],
+        [(0, 77, 2), (2, 79, 1), (3, 76, 1)],
+    ]
+    mel_C = [
+        [(0, 74, .5), (.5, 77, .5), (1, 79, 1), (2, 82, 2)],
+        [(0, 76, .5), (.5, 79, .5), (1, 81, 1), (2, 84, 2)],
+        [(0, 77, .5), (.5, 81, .5), (1, 82, 1), (2, 86, 2)],
+        [(0, 79, .5), (.5, 81, .5), (1, 84, 1), (2, 88, 1), (3, 86, 1)],
+        [(0, 89, 2), (2, 88, 1), (3, 86, 1)],
+        [(0, 86, 1.5), (1.5, 84, .5), (2, 81, 2)],
+        [(0, 82, 1), (1, 81, 1), (2, 77, 1), (3, 74, 1)],
+        [(0, 77, 2), (2, 76, 1.5)],
+    ]
+    melody = mel_A + mel_B + mel_A + mel_C
+    # Controcanto di carillon nella seconda ombra: riempie i vuoti della melodia.
+    counter = [
+        [(0, 93), (.5, 89), (1, 88)], [(3.5, 93)],
+        [(0, 94), (.5, 89), (1, 86)], [(2.5, 91), (3, 88), (3.5, 84)],
+        [(0, 93), (.5, 89), (1, 88)], [(3.5, 89)],
+        [(0, 94), (.5, 91), (1, 86)], [(2.5, 88), (3, 91), (3.5, 96)],
+    ]
+
+    # --- Arrangiamento ---------------------------------------------------------------
+    for bar in range(bars):
         start = bar * 4
-        put(pad(voices, 4), start, 0.05)
-        for at, m, dur in notes:
-            put(kalimba(m, dur), start + at, 0.45)
-        # Basso pizzicato: fondamentale, quinta, e una nota di passaggio.
-        put(pluck_bass(root, 1.5), start, 0.55)
-        put(pluck_bass(root + 7, 1), start + 2, 0.4)
-        put(pluck_bass(root + 12, 0.5), start + 3.5, 0.3)
-        for k in range(8):
-            put(shaker, start + k * 0.5, 0.06 if k % 2 else 0.035)
+        sec = bar // 8  # 0 = A, 1 = B, 2 = A', 3 = C
+        halves = chords[bar] if isinstance(chords[bar][0], tuple) else (chords[bar],)
+        span = 4 / len(halves)
+        for h, (root, voices) in enumerate(halves):
+            at = start + h * span
+            # Pad d'ombra pieno nelle sezioni scure, solo un velo nella luce.
+            put(pad(voices, span), at, 0.022 if sec in (0, 2) else 0.012, verb=0.5)
+            if sec in (1, 3) or (sec == 2 and bar % 2):
+                put(epiano(voices, span * 0.6), at, 0.06, verb=0.35)
+                if span == 4:
+                    put(epiano(voices[1:], 1.2), at + 2.5, 0.04, verb=0.35)
+            # Ostinato a crome: radice, poi le voci un'ottava sopra.
+            r4 = root
+            while r4 < 57:
+                r4 += 12
+            while r4 > 68:
+                r4 -= 12
+            tones = sorted({r4, *(v + 12 for v in voices)})
+            accent = (1.0, .5, .75, .5, .85, .5, .7, .55)
+            for k in range(int(span * 2)):
+                step = (k + h * 4) % 8
+                idx = (0, 2, 4, 2, 1, 2, 3, 2)[step]
+                gain = 0.085 if sec != 1 else 0.065
+                put(mallet(tones[min(idx, len(tones) - 1)]), at + k * 0.5,
+                    gain * accent[step] * mrng.uniform(0.9, 1.05), verb=0.3)
+            # Basso: lungo e calmo all'inizio, poi groove, poi la spinta della salita.
+            octave = root + 12 if root < 46 else root - 12
+            if bar < 4 or bar == 31:
+                pattern = ((0, root, span - 0.5), (3.5, root + 7, .5)) if span == 4 else ((0, root, span),)
+            elif sec == 3:
+                pattern = ((0, root, .75), (1, root, .5), (1.5, octave, .5), (2, root + 7, .75),
+                           (3, root, .5), (3.5, root + 7, .5))
+            else:
+                pattern = ((0, root, 1.5), (1.5, root, .5), (2, root + 7, 1), (3, octave, .5),
+                           (3.5, root + 7, .5))
+            for b, m, d in pattern:
+                if b < span:
+                    put(bass(m, d), at + b, 0.15 if b == 0 else 0.11, verb=0.08)
+
+        # Melodia: celesta sempre, vibrafono nella luce e nella salita, carillon nella luce.
+        for b, m, d in melody[bar]:
+            put(celesta(m, d), start + b, 0.2, verb=0.4)
+            if sec in (1, 3):
+                put(vibes(m - 12, d), start + b, 0.05, verb=0.4)
+            if sec == 1:
+                put(music_box(m + 12), start + b, 0.03, verb=0.6)
+        if sec == 2:
+            for b, m in counter[bar % 8]:
+                put(music_box(m), start + b, 0.045, verb=0.7)
+
+        # Ritmo. Nell'ombra iniziale c'è solo l'orologio della stanza vuota.
+        if sec == 0:
+            for k in range(4):
+                put(tick(1500 if k % 2 == 0 else 1250), start + k, 0.03 if bar < 4 else 0.04, verb=0.5)
+            if bar >= 4:
+                for k in range(4):
+                    put(hat(), start + k + 0.5, 0.05, verb=0.2)
+        else:
+            last = bar == 31
+            kicks = (0, 2.5) if sec != 3 else (0, 1.5, 2.5)
+            if bar in (15, 23):
+                kicks += (3.5,)
+            for b in kicks:
+                if not (last and b > 0):
+                    put(kick(), start + b, 0.22, verb=0.05, humanize=0.0)
+            for b in (1, 3):
+                if not (last and b > 2):
+                    put(tick(1500), start + b, 0.07, verb=0.35)
+            for k in range(8):
+                if not (last and k >= 4):
+                    put(hat(0.03 if k % 4 == 3 else 0.016), start + k * 0.5,
+                        0.065 if k % 2 else 0.04, verb=0.2)
+        if bar in (3, 19, 23, 27):
+            put(clank(), start + 3.5, 0.05, verb=1.2)
+
+    # Effetti di racconto: il soffio che porta al flash e la luce che si accende.
+    put(riser(3), 7 * 4 + 1, 0.035, verb=0.5, humanize=0)
+    put(riser(3), 23 * 4 + 1, 0.025, verb=0.5, humanize=0)
+    put(shimmer((89, 93, 96, 100, 101), 3.0), 8 * 4, 0.03, verb=0.8, humanize=0)
+    put(shimmer((86, 89, 93, 98, 101), 2.5), 28 * 4, 0.02, verb=0.8, humanize=0)
+
+    # --- Mix -----------------------------------------------------------------------
     # Loop senza stacchi: le code che escono dalla fine rientrano all'inizio.
-    out[:tail] += out[length:]
-    save("music.wav", lowpass_rate(out[:length], 5000, rate), peak=0.7, rate=rate, fade_out=False)
+    def fold(x):
+        y = x[:length].copy()
+        y[:tail] += x[length:]
+        return y
 
-
+    dry, send = fold(dry), fold(send)
+    # Riverbero a convoluzione circolare: la coda della fine del loop suona sull'inizio.
+    ir_t = ts(2.2)
+    ir = np.random.default_rng(42).standard_normal(len(ir_t)) * np.exp(-6.9 * ir_t / 2.2)
+    ir = spectral(np.concatenate([ir, np.zeros(len(ir))]), lo=200, hi=4500)[:len(ir_t)]
+    ir *= np.clip(ir_t / 0.015, 0, 1)
+    ir = np.concatenate([np.zeros(int(rate * 0.02)), ir]) / np.sqrt(np.sum(ir ** 2))
+    wet = np.fft.irfft(np.fft.rfft(send) * np.fft.rfft(ir, length), length)
+    mix = spectral(dry + wet * 0.5, lo=35, hi=9000)
+    # Stessa intensità media della canzone precedente: i volumi del gioco restano tarati.
+    mix = np.tanh(mix / np.max(np.abs(mix)) * 1.6)
+    mix *= 10 ** (-18.3 / 20) / np.sqrt(np.mean(mix ** 2))
+    data = (np.clip(mix, -1, 1) * 32767).astype("<i2").tobytes()
+    with wave.open(str(OUT / "music.wav"), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(data)
+    print("music.wav", f"{length / rate:.2f}s", f"picco {np.max(np.abs(mix)):.2f}")
 
 
 def modes(freq, dur, partials, decay):
@@ -956,16 +1210,6 @@ def fan():
     open_ = bandpass(noise(total), 300, 1300)
     air = (dark * (1 - 0.6 * color) + open_ * (0.4 + 0.6 * color)) * gust
     save("fan_air.wav", loop_xfade(lowpass(air, 1400), dur, xfade), peak=0.5, fade_out=False)
-
-
-def lowpass_rate(x, cutoff, rate):
-    alpha = 1 - np.exp(-2 * np.pi * cutoff / rate)
-    y = np.empty_like(x)
-    acc = 0.0
-    for i, v in enumerate(x):
-        acc += alpha * (v - acc)
-        y[i] = acc
-    return y
 
 
 SFX = (jump, land, flash, flash_ready, flash_dud, drip, death, tap, button,
