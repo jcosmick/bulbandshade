@@ -1,225 +1,237 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene format=3 uid="uid://ecmav116y0c4"]
 
-[ext_resource type="Script" path="res://scripts/level.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/room_background.gd" id="2"]
-[ext_resource type="Script" path="res://scripts/block.gd" id="3"]
-[ext_resource type="Script" path="res://scripts/player.gd" id="4"]
-[ext_resource type="Script" path="res://scripts/goal_lamp.gd" id="5"]
-[ext_resource type="Script" path="res://scripts/water_pool.gd" id="6"]
-[ext_resource type="Script" path="res://scripts/water_drip.gd" id="7"]
-[ext_resource type="Script" path="res://scripts/window_light.gd" id="8"]
-[ext_resource type="Script" path="res://scripts/checkpoint.gd" id="9"]
-[ext_resource type="Script" path="res://scripts/push_box.gd" id="10"]
-[ext_resource type="Script" path="res://scripts/glass_pane.gd" id="11"]
-[ext_resource type="Script" path="res://scripts/rail_crate.gd" id="12"]
-[ext_resource type="Script" path="res://scripts/floor_button.gd" id="13"]
+[ext_resource type="Script" uid="uid://cgr4ipmwfnphq" path="res://scripts/level.gd" id="1"]
+[ext_resource type="Script" uid="uid://cfb54eli4ce7p" path="res://scripts/room_background.gd" id="2"]
+[ext_resource type="Script" uid="uid://c7ngnkpr6cikx" path="res://scripts/block.gd" id="3"]
+[ext_resource type="Script" uid="uid://kt1g27e60883" path="res://scripts/player.gd" id="4"]
+[ext_resource type="Script" uid="uid://bj4aruw1g0xq8" path="res://scripts/goal_lamp.gd" id="5"]
+[ext_resource type="Script" uid="uid://c5am5dc1sfroc" path="res://scripts/water_pool.gd" id="6"]
+[ext_resource type="Script" uid="uid://q3m0evvnpwdy" path="res://scripts/water_drip.gd" id="7"]
+[ext_resource type="Script" uid="uid://dvkfcfujuvfva" path="res://scripts/window_light.gd" id="8"]
+[ext_resource type="Script" uid="uid://bhxfbw8ifw8f7" path="res://scripts/checkpoint.gd" id="9"]
+[ext_resource type="Script" uid="uid://t0mattuavq0i" path="res://scripts/push_box.gd" id="10"]
+[ext_resource type="Script" uid="uid://nhi7lwekh5q0" path="res://scripts/glass_pane.gd" id="11"]
+[ext_resource type="Script" uid="uid://41xrl1kpdaui" path="res://scripts/rail_crate.gd" id="12"]
+[ext_resource type="Script" uid="uid://dsuubmi51ia4i" path="res://scripts/floor_button.gd" id="13"]
+[ext_resource type="PackedScene" path="res://prefabs/props/barrel.tscn" id="p_barrel"]
+[ext_resource type="PackedScene" path="res://prefabs/props/barrel_lying.tscn" id="p_barrel_lying"]
+[ext_resource type="PackedScene" path="res://prefabs/props/cobweb.tscn" id="p_cobweb"]
+[ext_resource type="PackedScene" path="res://prefabs/props/cobweb_spider.tscn" id="p_cobweb_spider"]
+[ext_resource type="PackedScene" path="res://prefabs/props/edge_web.tscn" id="p_edge_web"]
+[ext_resource type="PackedScene" path="res://prefabs/props/exposed_bricks.tscn" id="p_exposed_bricks"]
+[ext_resource type="PackedScene" path="res://prefabs/props/fan.tscn" id="p_fan"]
+[ext_resource type="PackedScene" path="res://prefabs/props/jar.tscn" id="p_jar"]
+[ext_resource type="PackedScene" path="res://prefabs/props/pipe.tscn" id="p_pipe"]
+[ext_resource type="PackedScene" path="res://prefabs/props/rope.tscn" id="p_rope"]
+[ext_resource type="PackedScene" path="res://prefabs/props/rope_hook.tscn" id="p_rope_hook"]
+[ext_resource type="PackedScene" path="res://prefabs/props/sack_pile.tscn" id="p_sack_pile"]
+[ext_resource type="PackedScene" path="res://prefabs/props/vent.tscn" id="p_vent"]
+[ext_resource type="PackedScene" path="res://prefabs/props/wall_crack.tscn" id="p_wall_crack"]
+[ext_resource type="PackedScene" path="res://prefabs/props/wall_socket.tscn" id="p_wall_socket"]
+[ext_resource type="PackedScene" path="res://prefabs/props/wall_switch.tscn" id="p_wall_switch"]
 
-[node name="Level06" type="Node2D"]
+[node name="Level06" type="Node2D" unique_id=559151648]
 script = ExtResource("1")
 level_name = "6 · The Factory"
 icon = "factory"
 level_rect = Rect2(0, 0, 3240, 2600)
 
-[node name="Background" type="Node2D" parent="."]
+[node name="Background" type="Node2D" parent="." unique_id=1364048057]
+z_index = -10
 script = ExtResource("2")
 rect = Rect2(0, 0, 3240, 2600)
 wainscot_y = 2200.0
 
-[node name="Ceiling" type="StaticBody2D" parent="."]
+[node name="Ceiling" type="StaticBody2D" parent="." unique_id=1477741741]
 position = Vector2(1620, 40)
 script = ExtResource("3")
 size = Vector2(3240, 80)
 
-[node name="WallLeft" type="StaticBody2D" parent="."]
+[node name="WallLeft" type="StaticBody2D" parent="." unique_id=1890823694]
 position = Vector2(30, 1300)
 script = ExtResource("3")
 size = Vector2(60, 2600)
 
-[node name="WallRight" type="StaticBody2D" parent="."]
+[node name="WallRight" type="StaticBody2D" parent="." unique_id=599506005]
 position = Vector2(3210, 1300)
 script = ExtResource("3")
 size = Vector2(60, 2600)
 
-[node name="FloorStart" type="StaticBody2D" parent="."]
+[node name="FloorStart" type="StaticBody2D" parent="." unique_id=2129779219]
 position = Vector2(370, 2550)
 script = ExtResource("3")
 size = Vector2(740, 100)
 
-[node name="StepCrate" type="StaticBody2D" parent="."]
+[node name="StepCrate" type="StaticBody2D" parent="." unique_id=2017735019]
 position = Vector2(650, 2466)
 script = ExtResource("3")
 size = Vector2(100, 68)
 casts_shadow = true
 
-[node name="PitBottomStart" type="StaticBody2D" parent="."]
+[node name="PitBottomStart" type="StaticBody2D" parent="." unique_id=1561397096]
 position = Vector2(1040, 2590)
 script = ExtResource("3")
 size = Vector2(600, 20)
 
-[node name="PitWaterStart" type="Area2D" parent="."]
+[node name="PitWaterStart" type="Area2D" parent="." unique_id=1322332054]
 position = Vector2(1040, 2552.5)
 script = ExtResource("6")
 size = Vector2(600, 55)
 
-[node name="FloorGround" type="StaticBody2D" parent="."]
+[node name="FloorGround" type="StaticBody2D" parent="." unique_id=1567418002]
 position = Vector2(2290, 2550)
 script = ExtResource("3")
 size = Vector2(1900, 100)
 
-[node name="Checkpoint1" type="Area2D" parent="."]
+[node name="Checkpoint1" type="Area2D" parent="." unique_id=415467247]
 position = Vector2(1460, 2500)
 script = ExtResource("9")
 
-[node name="FaucetGround1" type="Node2D" parent="."]
+[node name="FaucetGround1" type="Node2D" parent="." unique_id=183984415]
 position = Vector2(1800, 1990)
 script = ExtResource("7")
-interval = 1.2
-mount = "ceiling"
 pipe_length = 45.0
 
-[node name="FaucetGround2" type="Node2D" parent="."]
+[node name="FaucetGround2" type="Node2D" parent="." unique_id=1955513857]
 position = Vector2(2060, 1990)
 script = ExtResource("7")
 interval = 1.0
 phase = 0.5
-mount = "ceiling"
 pipe_length = 45.0
 
-[node name="Checkpoint2" type="Area2D" parent="."]
+[node name="Checkpoint2" type="Area2D" parent="." unique_id=568918771]
 position = Vector2(2200, 2500)
 script = ExtResource("9")
 
-[node name="PushBoxShaft" type="CharacterBody2D" parent="."]
+[node name="PushBoxShaft" type="CharacterBody2D" parent="." unique_id=621858221]
 position = Vector2(2350, 2430)
 script = ExtResource("10")
 size = Vector2(120, 140)
 
-[node name="HangingCrateShaft" type="StaticBody2D" parent="."]
+[node name="HangingCrateShaft" type="StaticBody2D" parent="." unique_id=2042125307]
 position = Vector2(2760, 2300)
 script = ExtResource("3")
 size = Vector2(120, 80)
 casts_shadow = true
 chain_length = 360.0
 
-[node name="WindowLow" type="Node2D" parent="."]
+[node name="WindowLow" type="Node2D" parent="." unique_id=888201630]
 position = Vector2(3180, 2420)
 rotation = 3.141593
 script = ExtResource("8")
 opening = 120.0
 direction = Vector2(-1, 0)
 
-[node name="LedgeShaft" type="StaticBody2D" parent="."]
+[node name="LedgeShaft" type="StaticBody2D" parent="." unique_id=1052609579]
 position = Vector2(3110, 1900)
 script = ExtResource("3")
 size = Vector2(140, 40)
 
-[node name="Floor2Left" type="StaticBody2D" parent="."]
+[node name="Floor2Left" type="StaticBody2D" parent="." unique_id=1223384736]
 position = Vector2(1080, 1850)
 script = ExtResource("3")
 size = Vector2(2040, 100)
 
-[node name="Floor2Right" type="StaticBody2D" parent="."]
+[node name="Floor2Right" type="StaticBody2D" parent="." unique_id=370810485]
 position = Vector2(2780, 1850)
 script = ExtResource("3")
 size = Vector2(160, 100)
 
-[node name="Checkpoint3" type="Area2D" parent="."]
+[node name="Checkpoint3" type="Area2D" parent="." unique_id=525331498]
 position = Vector2(2790, 1800)
 script = ExtResource("9")
 
-[node name="PitBottomTank" type="StaticBody2D" parent="."]
+[node name="PitBottomTank" type="StaticBody2D" parent="." unique_id=1443871170]
 position = Vector2(2400, 1890)
 script = ExtResource("3")
 size = Vector2(600, 20)
 
-[node name="PitWaterTank" type="Area2D" parent="."]
+[node name="PitWaterTank" type="Area2D" parent="." unique_id=877723237]
 position = Vector2(2400, 1852.5)
 script = ExtResource("6")
 size = Vector2(600, 55)
 
-[node name="PipeSupportTank" type="StaticBody2D" parent="."]
+[node name="PipeSupportTank" type="StaticBody2D" parent="." unique_id=532085321]
 position = Vector2(2410, 1300)
 script = ExtResource("3")
 size = Vector2(200, 30)
 
-[node name="SteppingCrate" type="StaticBody2D" parent="."]
-position = Vector2(2380, 1820)
+[node name="SteppingCrate" type="StaticBody2D" parent="." unique_id=57472085]
+position = Vector2(2380, 1807)
 script = ExtResource("3")
 size = Vector2(180, 80)
 casts_shadow = true
 chain_length = 465.0
 
-[node name="FaucetTank" type="Node2D" parent="."]
+[node name="FaucetTank" type="Node2D" parent="." unique_id=2135448015]
 position = Vector2(2440, 1380)
 script = ExtResource("7")
 interval = 1.3
 phase = 0.3
-mount = "ceiling"
 pipe_length = 20.0
 
-[node name="Checkpoint4" type="Area2D" parent="."]
+[node name="Checkpoint4" type="Area2D" parent="." unique_id=744700300]
 position = Vector2(2000, 1800)
 script = ExtResource("9")
 
-[node name="GlassCube" type="StaticBody2D" parent="."]
+[node name="GlassCube" type="StaticBody2D" parent="." unique_id=1911098776]
 position = Vector2(1720, 1720)
 script = ExtResource("11")
 size = Vector2(160, 160)
 
-[node name="TallCrate" type="StaticBody2D" parent="."]
+[node name="TallCrate" type="StaticBody2D" parent="." unique_id=926942648]
 position = Vector2(1570, 1650)
 script = ExtResource("3")
 size = Vector2(140, 300)
 casts_shadow = true
 
-[node name="WindowShutterMid" type="Node2D" parent="."]
+[node name="WindowShutterMid" type="Node2D" parent="." unique_id=1505170691]
 position = Vector2(60, 1350)
 script = ExtResource("8")
-opening = 200.0
 direction = Vector2(1, 0)
 on_time = 2.0
 off_time = 3.0
 
-[node name="Floor3Left" type="StaticBody2D" parent="."]
+[node name="Floor3Left" type="StaticBody2D" parent="." unique_id=513855044]
 position = Vector2(140, 1150)
 script = ExtResource("3")
 size = Vector2(160, 100)
 
-[node name="Floor3Mid" type="StaticBody2D" parent="."]
+[node name="Floor3Mid" type="StaticBody2D" parent="." unique_id=602898701]
 position = Vector2(510, 1150)
 script = ExtResource("3")
 size = Vector2(260, 100)
 
-[node name="Floor3Right" type="StaticBody2D" parent="."]
+[node name="Floor3Right" type="StaticBody2D" parent="." unique_id=266642696]
 position = Vector2(1030, 1150)
 script = ExtResource("3")
 size = Vector2(340, 100)
 
-[node name="PitBottomA" type="StaticBody2D" parent="."]
+[node name="PitBottomA" type="StaticBody2D" parent="." unique_id=1624287620]
 position = Vector2(750, 1190)
 script = ExtResource("3")
 size = Vector2(220, 20)
 
-[node name="PitWaterA" type="Area2D" parent="."]
+[node name="PitWaterA" type="Area2D" parent="." unique_id=678057603]
 position = Vector2(750, 1152.5)
 script = ExtResource("6")
 size = Vector2(220, 55)
 
-[node name="PitBottomB" type="StaticBody2D" parent="."]
+[node name="PitBottomB" type="StaticBody2D" parent="." unique_id=448816657]
 position = Vector2(300, 1190)
 script = ExtResource("3")
 size = Vector2(160, 20)
 
-[node name="PitWaterB" type="Area2D" parent="."]
+[node name="PitWaterB" type="Area2D" parent="." unique_id=84293498]
 position = Vector2(300, 1152.5)
 script = ExtResource("6")
 size = Vector2(160, 55)
 
-[node name="Checkpoint5" type="Area2D" parent="."]
+[node name="Checkpoint5" type="Area2D" parent="." unique_id=838507236]
 position = Vector2(1110, 1100)
 script = ExtResource("9")
 
-[node name="RailCrate" type="AnimatableBody2D" parent="."]
+[node name="RailCrate" type="AnimatableBody2D" parent="." unique_id=1973033654]
 position = Vector2(520, 900)
 script = ExtResource("12")
 size = Vector2(140, 100)
@@ -229,29 +241,175 @@ rail_left = -260.0
 rail_right = 830.0
 hanger_length = 73.0
 
-[node name="Button" type="Area2D" parent="."]
+[node name="Button" type="Area2D" parent="." unique_id=497961636]
 position = Vector2(130, 1100)
 script = ExtResource("13")
 target = NodePath("../RailCrate")
 
-[node name="SkylightShutter" type="Node2D" parent="."]
+[node name="SkylightShutter" type="Node2D" parent="." unique_id=1194111252]
 position = Vector2(1350, 80)
 rotation = 1.570796
 script = ExtResource("8")
-opening = 200.0
 direction = Vector2(0, 1)
 on_time = 2.0
 off_time = 3.0
 
-[node name="LedgeGoal" type="StaticBody2D" parent="."]
+[node name="LedgeGoal" type="StaticBody2D" parent="." unique_id=504681179]
 position = Vector2(1690, 510)
 script = ExtResource("3")
 size = Vector2(400, 40)
 
-[node name="Goal" type="Area2D" parent="."]
+[node name="Goal" type="Area2D" parent="." unique_id=515606710]
 position = Vector2(1750, 370)
 script = ExtResource("5")
 
-[node name="Player" type="CharacterBody2D" parent="."]
+[node name="Player" type="CharacterBody2D" parent="." unique_id=1858125687]
 position = Vector2(160, 2448)
 script = ExtResource("4")
+
+[node name="Cobweb" parent="." unique_id=1796401588 instance=ExtResource("p_cobweb")]
+z_index = -5
+position = Vector2(60, 1900)
+radius = 90.0
+
+[node name="EdgeWeb" parent="." unique_id=479410504 instance=ExtResource("p_edge_web")]
+z_index = -5
+position = Vector2(1300, 1900)
+width = 200.0
+pattern = 3
+
+[node name="Pipe" parent="." unique_id=1390533504 instance=ExtResource("p_pipe")]
+z_index = -6
+position = Vector2(60, 2000)
+points = PackedVector2Array(0, 0, 500, 0, 500, -100)
+
+[node name="Fan" parent="." unique_id=2097762236 instance=ExtResource("p_fan")]
+z_index = -8
+position = Vector2(1000, 2150)
+speed = 0.7
+blades = 5
+
+[node name="Vent" parent="." unique_id=2038583772 instance=ExtResource("p_vent")]
+z_index = -8
+position = Vector2(2500, 2050)
+
+[node name="WallCrack" parent="." unique_id=2086506622 instance=ExtResource("p_wall_crack")]
+z_index = -9
+position = Vector2(2600, 2300)
+direction = 80.0
+pattern = 2
+
+[node name="Barrel" parent="." unique_id=1548669228 instance=ExtResource("p_barrel")]
+z_index = -5
+position = Vector2(300, 2440)
+
+[node name="BarrelLying" parent="." unique_id=418788051 instance=ExtResource("p_barrel_lying")]
+z_index = -5
+position = Vector2(420, 2455)
+
+[node name="SackPile" parent="." unique_id=860323465 instance=ExtResource("p_sack_pile")]
+z_index = -5
+position = Vector2(1620, 2500)
+rows = 2
+
+[node name="ExposedBricks" parent="." unique_id=2079109644 instance=ExtResource("p_exposed_bricks")]
+z_index = -9
+position = Vector2(900, 1500)
+pattern = 5
+
+[node name="WallCrack2" parent="." unique_id=1936703134 instance=ExtResource("p_wall_crack")]
+z_index = -9
+position = Vector2(400, 1600)
+direction = -60.0
+pattern = 4
+
+[node name="WallSwitch" parent="." unique_id=665331737 instance=ExtResource("p_wall_switch")]
+z_index = -8
+position = Vector2(2050, 1650)
+
+[node name="Barrel2" parent="." unique_id=1898972338 instance=ExtResource("p_barrel")]
+z_index = -5
+position = Vector2(150, 1740)
+
+[node name="Bottle" parent="." unique_id=1857406836 instance=ExtResource("p_jar")]
+z_index = -4
+position = Vector2(240, 1800)
+kind = "bottle"
+
+[node name="Jar" parent="." unique_id=1432237823 instance=ExtResource("p_jar")]
+z_index = -4
+position = Vector2(275, 1800)
+
+[node name="Rope" parent="." unique_id=92160676 instance=ExtResource("p_rope")]
+z_index = -4
+position = Vector2(1000, 1200)
+length = 200.0
+
+[node name="CobwebTop" parent="." unique_id=1317484421 instance=ExtResource("p_cobweb")]
+z_index = -5
+position = Vector2(60, 80)
+radius = 130.0
+
+[node name="CobwebSpider" parent="." unique_id=845498042 instance=ExtResource("p_cobweb_spider")]
+z_index = -5
+position = Vector2(3180, 80)
+radius = 120.0
+spider_drop = 100.0
+
+[node name="PipeCeiling" parent="." unique_id=248265221 instance=ExtResource("p_pipe")]
+z_index = -6
+position = Vector2(1950, 80)
+points = PackedVector2Array(0, 0, 0, 160, 1000, 160, 1000, 600, 1230, 600)
+
+[node name="FanBig" parent="." unique_id=1323117638 instance=ExtResource("p_fan")]
+z_index = -8
+position = Vector2(2450, 450)
+radius = 80.0
+speed = 0.8
+
+[node name="Vent2" parent="." unique_id=1454689403 instance=ExtResource("p_vent")]
+z_index = -8
+position = Vector2(2750, 380)
+
+[node name="ExposedBricks2" parent="." unique_id=437032234 instance=ExtResource("p_exposed_bricks")]
+z_index = -9
+position = Vector2(2650, 850)
+size = Vector2(300, 180)
+pattern = 8
+
+[node name="WallCrack3" parent="." unique_id=633267591 instance=ExtResource("p_wall_crack")]
+z_index = -9
+position = Vector2(2950, 1000)
+size = 140.0
+direction = -100.0
+pattern = 9
+
+[node name="EdgeWeb2" parent="." unique_id=344316033 instance=ExtResource("p_edge_web")]
+z_index = -5
+position = Vector2(1520, 530)
+width = 200.0
+pattern = 7
+
+[node name="Can" parent="." unique_id=179838879 instance=ExtResource("p_jar")]
+z_index = -4
+position = Vector2(1550, 490)
+kind = "can"
+
+[node name="Can2" parent="." unique_id=1241841935 instance=ExtResource("p_jar")]
+z_index = -4
+position = Vector2(1550, 454)
+kind = "can"
+
+[node name="Jar2" parent="." unique_id=1844397332 instance=ExtResource("p_jar")]
+z_index = -4
+position = Vector2(1590, 490)
+
+[node name="RopeHook" parent="." unique_id=940091496 instance=ExtResource("p_rope_hook")]
+z_index = -4
+position = Vector2(900, 80)
+length = 300.0
+
+[node name="WallSocket" parent="." unique_id=1957956559 instance=ExtResource("p_wall_socket")]
+z_index = -8
+position = Vector2(1100, 1040)
+kind = "double_socket"
