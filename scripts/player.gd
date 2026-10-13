@@ -226,7 +226,7 @@ func _physics_process(delta: float) -> void:
 		_jump_buffer = 0.0
 		_coyote = 0.0
 		_squash = Vector2(0.75, 1.25)
-		Sfx.play("jump", -3.0, 0.07)
+		Sfx.play("jump", -3.0, 0.12)
 
 	var accel := GROUND_ACCEL if is_on_floor() else AIR_ACCEL
 	velocity.x = move_toward(velocity.x, direction * SPEED, accel * delta)

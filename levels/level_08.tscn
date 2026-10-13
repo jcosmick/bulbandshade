@@ -205,4 +205,6 @@ position = Vector2(1044, 440)
 
 [node name="GroundPlant2" parent="." unique_id=51794138 instance=ExtResource("14_u7eqt")]
 z_index = -5
-position = Vector2(439, 845)
+position = Vector2(463, 845)
+height = 380.0
+pot_width = 130.0
