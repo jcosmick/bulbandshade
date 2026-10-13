@@ -226,8 +226,8 @@ rows = 1
 
 [node name="RopeHook" parent="." unique_id=1940183037 instance=ExtResource("27_ccdmt")]
 z_index = -4
-position = Vector2(2674, 1304)
-length = 600.0
+position = Vector2(2678, 1281)
+length = 120.0
 end_style = "knot"
 thickness = 10.0
 

@@ -155,7 +155,7 @@ position = Vector2(120, 1029)
 
 [node name="FlashPreview" parent="." unique_id=916005369 instance=ExtResource("9_gaaq0")]
 z_index = 50
-position = Vector2(1339, 1331)
+position = Vector2(105, 1412)
 windows_open = false
 
 [node name="Vent" parent="." unique_id=1007811661 instance=ExtResource("16_7kdks")]
@@ -233,33 +233,45 @@ points = PackedVector2Array(0, 0, 159.33618, 0, 160, -156)
 valve = true
 
 [node name="Checkpoint" parent="." unique_id=1627458432 instance=ExtResource("24_oyse4")]
-position = Vector2(2157, 1109)
+position = Vector2(2152, 1088)
 
 [node name="Block3" parent="." unique_id=2057277685 instance=ExtResource("6_fenrf")]
 position = Vector2(2172, 1128)
+size = Vector2(200, 80)
 
 [node name="WaterDrip2" parent="." unique_id=1221536114 instance=ExtResource("23_oyse4")]
-position = Vector2(2145, 1273)
+position = Vector2(2145, 1293)
 
 [node name="GlassPane2" parent="." unique_id=1141837431 instance=ExtResource("12_tir3y")]
-position = Vector2(2542, 849)
+position = Vector2(2806, 849)
+size = Vector2(800, 30)
 
 [node name="JumpArc" parent="." unique_id=1505462864 instance=ExtResource("25_i0ocl")]
-position = Vector2(2268, 1105)
+position = Vector2(3202, 818)
 
 [node name="JumpArc2" parent="." unique_id=263437522 instance=ExtResource("25_i0ocl")]
 position = Vector2(574, 810)
 
 [node name="GlassPane3" parent="." unique_id=1272393166 instance=ExtResource("12_tir3y")]
-position = Vector2(2524, 283)
+position = Vector2(2588, 275)
 
 [node name="GlassPane4" parent="." unique_id=1548582936 instance=ExtResource("12_tir3y")]
-position = Vector2(2205, 725)
+position = Vector2(2189, 605)
+
+[node name="GlassPane5" parent="." unique_id=81738309 instance=ExtResource("12_tir3y")]
+position = Vector2(3562, 1028)
 
 [node name="Crate3" parent="." unique_id=620418413 instance=ExtResource("11_ck2xc")]
-position = Vector2(2164, 664)
+position = Vector2(2148, 544)
+
+[node name="Crate4" parent="." unique_id=961815995 instance=ExtResource("11_ck2xc")]
+position = Vector2(3561, 967)
+
+[node name="Crate5" parent="." unique_id=1565046211 instance=ExtResource("11_ck2xc")]
+position = Vector2(3522, 1375)
+size = Vector2(150, 90)
 
 [node name="MiniBulb" parent="." unique_id=943388293 instance=ExtResource("26_174un")]
-position = Vector2(2522, 214)
+position = Vector2(2586, 206)
 id = "level08_purple"
 color = Color(0.7649443, 0.26576748, 0.80302566, 1)

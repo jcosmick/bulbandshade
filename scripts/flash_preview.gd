@@ -8,7 +8,8 @@ extends Node2D
 ## In gioco si elimina da solo, quindi se ne possono lasciare quanti si vuole.
 ##
 ## Viola: ombre solide. Bordo verde: lati calpestabili (le ombre si
-## attraversano da sotto e si calpestano da sopra). Giallo: fasci delle finestre.
+## attraversano da sotto e si calpestano da sopra). Arancione: lati solidi ma
+## troppo ripidi, ci si scivola. Giallo: fasci delle finestre.
 
 ## Raggio del flash (0 = quello del Player del livello).
 @export var flash_radius := 0.0:
@@ -34,6 +35,8 @@ extends Node2D
 const SHADOW_FILL := Color(0.35, 0.2, 0.6, 0.45)
 const SHADOW_EDGE := Color(0.7, 0.55, 1.0, 0.9)
 const WALKABLE_EDGE := Color(0.4, 1.0, 0.5, 1.0)
+## Lati solidi ma troppo ripidi per camminarci: ci si scivola sopra.
+const STEEP_EDGE := Color(1.0, 0.6, 0.2, 1.0)
 const BEAM_FILL := Color(1.0, 0.93, 0.6, 0.12)
 const RADIUS_COLOR := Color(1.0, 0.95, 0.7, 0.35)
 const BULB_COLOR := Color(1.0, 0.95, 0.7, 0.8)
@@ -203,3 +206,5 @@ func _draw_walkable(polygon: PackedVector2Array) -> void:
 			normal = -normal
 		if absf(normal.angle_to(Vector2.UP)) <= WALKABLE_ANGLE:
 			draw_line(a, b, WALKABLE_EDGE, 5.0)
+		elif normal.dot(Vector2.UP) >= ShadowSystem.TOP_EDGE_MIN_UP:
+			draw_line(a, b, STEEP_EDGE, 4.0)

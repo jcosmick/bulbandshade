@@ -23,6 +23,10 @@ const BEAM_INSIDE_MARGIN := 30.0
 ## Layer fisico delle ombre solide (bit 2): il giocatore e le casse ci
 ## camminano sopra, le gocce d'acqua le attraversano.
 const SHADOW_COLLISION_LAYER := 1 << 1
+## Un bordo dell'ombra è solido se la sua normale esterna punta verso l'alto
+## almeno così (coseno: 0.1736 = pendenza fino a 80°). Oltre i 55° del
+## floor_max_angle del Player non ci si cammina: ci si scivola.
+const TOP_EDGE_MIN_UP := 0.1736
 
 ## Nodo che ospita i corpi fisici delle ombre (il livello corrente).
 var world: Node
@@ -290,19 +294,43 @@ static func _sanitize(polygon: PackedVector2Array) -> Array[PackedVector2Array]:
 
 
 func _spawn_clean(polygon: PackedVector2Array, origin: Vector2, age: float) -> void:
-	var collision := CollisionPolygon2D.new()
-	collision.polygon = polygon
-	collision.one_way_collision = one_way
-	collision.one_way_collision_margin = 16.0
 	var body := StaticBody2D.new()
 	body.collision_layer = SHADOW_COLLISION_LAYER
 	body.collision_mask = 0
-	body.add_child(collision)
+	if one_way:
+		_add_top_edges(body, polygon)
+	else:
+		var collision := CollisionPolygon2D.new()
+		collision.polygon = polygon
+		body.add_child(collision)
 	world.add_child(body)
 
 	var platform := ShadowPlatform.new()
 	platform.setup(polygon, lifetime, body, origin, age)
 	visual_layer.add_child(platform)
+
+
+## Ombra one-way: solo i bordi rivolti verso l'alto diventano segmenti one-way.
+## Un poligono solido viene spezzato in pezzi convessi e, una volta dentro
+## l'ombra (entrando di lato), i bordi interni tra i pezzi bloccavano l'uscita.
+func _add_top_edges(body: StaticBody2D, polygon: PackedVector2Array) -> void:
+	for i in polygon.size():
+		var a := polygon[i]
+		var b := polygon[(i + 1) % polygon.size()]
+		var normal := (b - a).orthogonal().normalized()
+		# Verso l'esterno: il punto appena fuori dal bordo non sta nel poligono.
+		if Geometry2D.is_point_in_polygon((a + b) / 2.0 + normal, polygon):
+			normal = -normal
+		if normal.dot(Vector2.UP) < TOP_EDGE_MIN_UP:
+			continue
+		var segment := SegmentShape2D.new()
+		segment.a = a
+		segment.b = b
+		var collision := CollisionShape2D.new()
+		collision.shape = segment
+		collision.one_way_collision = true
+		collision.one_way_collision_margin = 16.0
+		body.add_child(collision)
 
 
 static func _area(polygon: PackedVector2Array) -> float:
