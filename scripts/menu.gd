@@ -17,6 +17,8 @@ const GLOW_SIZE := 1100.0
 ## Lato del pulsante ingranaggio (impostazioni) e distanza dai bordi.
 const GEAR_SIZE := 130.0
 const GEAR_MARGIN := 40.0
+## Spostamento (px) della lista oltre il quale un tocco su un livello è uno scorrimento.
+const SCROLL_TAP_SLOP := 12.0
 
 var _bulb: Player
 var _minis: Array[MiniBulbSprite] = []
@@ -24,6 +26,8 @@ var _glow: TextureRect
 var _spacer: Control
 var _settings: SettingsPanel
 var _gear: Button
+var _scroll: ScrollContainer
+var _scroll_at_press := 0.0
 var _bulb_home := Vector2.ZERO
 var _time := 0.0
 
@@ -181,6 +185,7 @@ func _start_level(index: int) -> void:
 func _add_level_list(column: VBoxContainer) -> void:
 	column.add_child(_label("Levels", 48, UiStyle.TEXT))
 	var scroll := ScrollContainer.new()
+	_scroll = scroll
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(scroll)
@@ -196,13 +201,23 @@ func _add_level_list(column: VBoxContainer) -> void:
 		grid.add_child(_level_card(i))
 
 
+## Avvia il livello solo se è stato un tocco e non uno scorrimento della lista.
+func _on_card_pressed(index: int) -> void:
+	if absf(_scroll.scroll_vertical - _scroll_at_press) > SCROLL_TAP_SLOP:
+		return
+	_start_level(index)
+
+
 func _level_card(index: int) -> Button:
 	var card := Button.new()
 	card.custom_minimum_size = Vector2(300, 340)
 	var unlocked := Progress.is_unlocked(index)
 	card.disabled = not unlocked
+	# PASS: il trascinamento col dito arriva anche alla ScrollContainer.
+	card.mouse_filter = Control.MOUSE_FILTER_PASS
 	if unlocked:
-		card.pressed.connect(_start_level.bind(index))
+		card.button_down.connect(func() -> void: _scroll_at_press = _scroll.scroll_vertical)
+		card.pressed.connect(_on_card_pressed.bind(index))
 	var info := _level_info(index)
 
 	var content := VBoxContainer.new()

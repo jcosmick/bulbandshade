@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/decor_pipe.gd" id="1"]
+
+[node name="PipeElbow" type="Line2D"]
+width = 22.0
+default_color = Color(1, 1, 1, 0)
+script = ExtResource("1")
+shape = "elbow"
+valve = true

@@ -21,6 +21,8 @@ const SOUNDS := {
 	"flicker_on": preload("res://sounds/flicker_on.wav"),
 	"shadow_dissolve": preload("res://sounds/shadow_dissolve.wav"),
 	"shadow_puff": preload("res://sounds/shadow_puff.wav"),
+	"fan_grind": preload("res://sounds/fan_grind.wav"),
+	"fan_air": preload("res://sounds/fan_air.wav"),
 }
 ## Suoni con più varianti: ogni volta ne suona una a caso, mai la stessa due volte di fila.
 const ROUND_ROBIN := {
@@ -33,6 +35,16 @@ const ROUND_ROBIN := {
 		preload("res://sounds/shadow_step_1.wav"),
 		preload("res://sounds/shadow_step_2.wav"),
 		preload("res://sounds/shadow_step_3.wav"),
+	],
+	"can": [
+		preload("res://sounds/can_1.wav"),
+		preload("res://sounds/can_2.wav"),
+		preload("res://sounds/can_3.wav"),
+	],
+	"glass": [
+		preload("res://sounds/glass_1.wav"),
+		preload("res://sounds/glass_2.wav"),
+		preload("res://sounds/glass_3.wav"),
 	],
 }
 ## Pulsanti touch di gioco che hanno già un suono proprio (o nessuno).

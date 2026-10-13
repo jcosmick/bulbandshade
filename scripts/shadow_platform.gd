@@ -174,7 +174,7 @@ func _puff() -> void:
 	puff.gravity = Vector2(0, -80)
 	puff.initial_velocity_min = 20.0
 	puff.initial_velocity_max = 50.0
-	puff.texture = _circle_texture()
+	puff.texture = circle_texture()
 	puff.scale_amount_min = 0.5
 	puff.scale_amount_max = 1.0
 	var curve := Curve.new()
@@ -196,7 +196,7 @@ static func _play_once(sound: String, volume_db: float) -> void:
 
 
 ## Cerchio pieno (raggio 12 px) dai bordi netti.
-static func _circle_texture() -> Texture2D:
+static func circle_texture() -> Texture2D:
 	if _circle == null:
 		var size := 24
 		var image := Image.create(size, size, false, Image.FORMAT_RGBA8)

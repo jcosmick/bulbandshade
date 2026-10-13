@@ -10,6 +10,8 @@ extends Area2D
 
 const WATER := Color(0.2, 0.45, 0.9, 0.8)
 const SURFACE := Color(0.6, 0.85, 1.0, 0.9)
+const SPLASH_AMOUNT := 28
+const SPLASH_LIFETIME := 0.7
 
 var _visual: Node2D
 var _time := 0.0
@@ -38,7 +40,42 @@ func _process(delta: float) -> void:
 
 func _on_body_entered(body: Node2D) -> void:
 	if body is Player:
+		_splash(body.global_position.x)
 		body.die()
+
+
+## Schizzo di gocce dove la lampadina tocca l'acqua: partono verso l'alto
+## a ventaglio, ricadono e si rimpiccioliscono. Sta sull'overlay, sopra il buio.
+func _splash(global_x: float) -> void:
+	var drops := CPUParticles2D.new()
+	var x := clampf(to_local(Vector2(global_x, global_position.y)).x, -size.x / 2.0, size.x / 2.0)
+	drops.position = Vector2(x, -size.y / 2.0)
+	drops.one_shot = true
+	drops.explosiveness = 0.9
+	drops.amount = SPLASH_AMOUNT
+	drops.lifetime = SPLASH_LIFETIME
+	drops.lifetime_randomness = 0.4
+	drops.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	drops.emission_rect_extents = Vector2(24, 2)
+	drops.direction = Vector2.UP
+	drops.spread = 40.0
+	drops.gravity = Vector2(0, 1400)
+	drops.initial_velocity_min = 250.0
+	drops.initial_velocity_max = 550.0
+	drops.texture = ShadowPlatform.circle_texture()
+	drops.scale_amount_min = 0.25
+	drops.scale_amount_max = 0.6
+	var curve := Curve.new()
+	curve.add_point(Vector2(0.0, 1.0))
+	curve.add_point(Vector2(1.0, 0.3))
+	drops.scale_amount_curve = curve
+	var colors := Gradient.new()
+	colors.set_color(0, SURFACE)
+	colors.set_color(1, Color(WATER, 0.0))
+	drops.color_ramp = colors
+	drops.finished.connect(drops.queue_free)
+	_visual.add_child(drops)
+	drops.emitting = true
 
 
 func _draw() -> void:

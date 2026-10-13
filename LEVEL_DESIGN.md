@@ -23,7 +23,7 @@ mentre li sposti e li ridimensioni.
 Panoramica; ogni passo rimanda alla sezione con i dettagli.
 
 1. **Copia il template.** Nel pannello FileSystem fai tasto destro su
-   `prefabs/level_template.tscn` → *Duplicate…*, chiamalo per esempio
+   `prefabs/level_structures/level_template.tscn` → *Duplicate…*, chiamalo per esempio
    `levels/level_08.tscn` e aprilo. Contiene già sfondo, soffitto, pareti,
    pavimento, `Player` e `Goal`.
 
@@ -136,7 +136,16 @@ inquadratura (e le ombre si fermano al suo bordo).
 
 ## 4. Prefab disponibili
 
-Tutti in `prefabs/`. Le **varianti** sono lo stesso script con valori già
+Tutti in `prefabs/`, divisi in quattro cartelle:
+
+| Cartella | Cosa contiene | Sezioni qui sotto |
+|---|---|---|
+| `level_structures/` | Template, terreno, casse, vetro, finestre, acqua, pulsante: ciò che forma il percorso e le sue meccaniche | Struttura, Casse, Vetro, Luce, Acqua, `floor_button` |
+| `gameplay/` | Lampadina, arrivo, checkpoint, lucine collezionabili, suggerimento del flash | Giocatore e obiettivi, `flash_hint` |
+| `props/` | Oggetti di scena, solo estetici o che reagiscono appena alla lampadina | Decorazioni |
+| `gizmos/` | Strumenti visibili solo nell'editor, in gioco si cancellano | Strumenti |
+
+Le **varianti** sono lo stesso script con valori già
 impostati: puoi sempre partire dal prefab base e cambiare i parametri.
 
 ### Struttura
@@ -213,11 +222,85 @@ Muri e casse lo bloccano, il vetro no.
 | `floor_button.tscn` | Pulsante a pavimento → [6.1](#61-pulsante-che-muove-una-cassa-floorbutton--railcrate) | `target` (nodo da attivare) |
 | `flash_hint.tscn` | Zona invisibile: finché la lampadina è dentro col flash carico, il pulsante del flash pulsa → [6.3](#63-suggerimento-del-flash-flashhint) | `size` |
 
+### Decorazioni (nessuna interazione)
+
+Solo estetica: niente collisioni, niente ombre, la lampadina ci passa davanti.
+Stanno dietro a tutti gli elementi di gioco e si illuminano col buio come lo
+sfondo.
+
+| Prefab | Cosa è | Parametri principali |
+|---|---|---|
+| `cobweb.tscn` | Ragnatela d'angolo | `corner`, `radius`, `threads`, `rings`, `spider_drop` |
+| `cobweb_spider.tscn` | Variante: angolo in alto a destra con ragnetto appeso | come sopra |
+| `barrel.tscn` | Barile di legno 90×120 | `size`, `lying` |
+| `barrel_lying.tscn` | Variante: barile sdraiato su un fianco | come sopra |
+| `pipe.tscn` | Tubo dritto lungo 300 px | `shape`, `points`, `width`, `joint_spacing`, `end_flanges`, `valve` |
+| `pipe_elbow.tscn` | Variante: gomito con volantino (`shape = elbow`) | `leg_a`, `leg_b`, `bend_angle`, più quelli sopra |
+
+- `corner`: in quale angolo sta la ragnatela; la tela si apre verso
+  l'interno della stanza. `spider_drop` > 0 aggiunge un ragno appeso a quella
+  distanza (ha senso negli angoli in alto).
+- Il barile è più scuro delle casse apposta, per non confonderlo con gli
+  oggetti che fanno ombra. Con `lying` larghezza e altezza si scambiano.
+- `points` del tubo sono coordinate **locali** rispetto al nodo. Il tubo è
+  una `Line2D`, quindi i punti si piazzano col mouse: seleziona il nodo e
+  usa i pulsanti che compaiono nella toolbar 2D (*crea* per aggiungere punti
+  cliccando, *modifica* per trascinarli, *cancella* per toglierli). Ogni
+  punto intermedio diventa un gomito. Fai toccare le estremità (con flangia) a un muro o
+  al soffitto. `joint_spacing = 0` toglie i raccordi lungo i tratti.
+- Gomito (`shape = elbow`): l'origine è il **punto d'angolo**. `leg_a` è la
+  lunghezza del braccio che sale dall'angolo, `leg_b` quella dell'altro
+  braccio, girato di `bend_angle` gradi (90 = verso destra, -90 = verso
+  sinistra, 45 = in diagonale). Accorciando i bracci l'angolo resta fermo.
+  Per orientarlo in altro modo ruota il nodo.
+
+Altre decorazioni statiche:
+
+| Prefab | Cosa è | Parametri principali |
+|---|---|---|
+| `edge_web.tscn` | Ragnatela che pende lungo un bordo (sotto piattaforme o soffitto) | `width`, `depth`, `pattern` |
+| `fan.tscn` | Ventola da muro; in gioco le pale girano | `radius`, `speed` (giri/s, 0 = ferma), `blades` |
+| `vent.tscn` | Bocchetta d'aerazione a lamelle | `size`, `slat_spacing` |
+| `sack_pile.tscn` | Pila di sacchi di juta | `rows`, `sack_size` |
+| `wall_crack.tscn` | Crepa nell'intonaco | `size`, `branches`, `direction`, `spread`, `pattern` |
+| `exposed_bricks.tscn` | Chiazza senza intonaco coi mattoni a vista | `size`, `pattern` |
+| `wall_switch.tscn` | Interruttore a muro | `kind` |
+| `dust.tscn` | Polvere sospesa: granelli che galleggiano in un rettangolo, visibili **solo nella luce** (vicino alla lampadina e nei fasci delle finestre) | `size`, `amount`, `speed` |
+| `wall_socket.tscn` | Variante: presa (`kind = socket` o `double_socket`) | `kind` |
+
+- `pattern` (crepe, mattoni, ragnatele lungo i bordi): cambialo per avere una
+  forma diversa; due istanze con lo stesso valore sono identiche.
+- `Dust`: nell'editor si vede solo un riquadro giallo con scritto
+  *dust*. Mettila dove passa un fascio di finestra o in zone che la
+  lampadina attraversa; un rettangolo grande con `amount` 60–100 basta.
+- `EdgeWeb` pende sotto una linea che va dall'origine verso destra; ruotata
+  di 180° si appoggia sopra un bordo.
+
+### Decorazioni che reagiscono alla lampadina
+
+Non bloccano la lampadina e non fanno ombra: si muovono e basta.
+
+| Prefab | Cosa è | Parametri principali |
+|---|---|---|
+| `jar.tscn` | Barattolo (`kind`: `jar` vasetto, `can` latta, `bottle` bottiglia): camminandoci contro (o atterrandoci sopra) la lampadina lo calcia; saltella, rimbalza sui muri e può restare sdraiato o capovolto | `kind` |
+| `rope.tscn` | Fune appesa che ondeggia quando la lampadina la attraversa | `length`, `segments`, `end_style`, `thickness` |
+| `rope_hook.tscn` | Variante: fune con gancio in fondo | come sopra |
+
+- I barattoli si fermano sui solidi, sulle ombre solide (se l'ombra sparisce
+  cadono) e sugli altri barattoli: si possono **impilare**. Per metterne uno
+  sopra un altro, la y del barattolo sopra è la cima di quello sotto:
+  `y sotto - altezza sotto` (altezze: `jar` 41, `can` 36, `bottle` 55).
+  Calciando quello in basso la pila crolla; un barattolo lanciato contro un
+  altro lo spinge. Quando la lampadina riparte dal checkpoint tornano al loro posto,
+  come le casse spingibili.
+- `end_style` della fune: `knot` (nodo), `hook` (gancio), `loop` (cappio).
+
 ### Strumenti (solo editor)
 
 | Prefab | Cosa è | Parametri principali |
 |---|---|---|
 | `jump_arc.tscn` | Gizmo del salto, in gioco si cancella da solo → [sezione 7](#7-controllare-i-salti) | `fall_depth` |
+| `flash_preview.tscn` | Gizmo del flash: mostra le ombre che crea un flash da quel punto → [sezione 7.1](#71-anteprima-delle-ombre-flashpreview) | `flash_radius`, `windows_open`, `rail_crates_arrived`, `show_jump_arc` |
 
 ---
 
@@ -232,11 +315,21 @@ Muri e casse lo bloccano, il vetro no.
 | `Checkpoint` | la base | y = `pavimento` |
 | `FloorButton` | la base | y = `pavimento` |
 | `JumpArc` | i piedi | y = `pavimento` |
+| `FlashPreview` | i piedi della lampadina che fa il flash | y = `pavimento` (o più su per un flash in salto) |
 | `MiniBulb` | il centro del vetro | y = `pavimento - 50` (se appoggiata) |
 | `WindowLight` | la superficie del muro, centro dell'apertura | x = 60 (sinistra) / x = W - 60 (destra) |
 | `Skylight` | la superficie del soffitto, centro dell'apertura | y = 80 (bordo inferiore del soffitto) |
 | `WaterDrip` | la bocca del rubinetto (le gocce partono da lì) | libera; poi regola `pipe_length` |
 | `RailCrate` | il centro della cassa nella posizione di **partenza** | vedi [6.1](#61-pulsante-che-muove-una-cassa-floorbutton--railcrate) |
+| `Cobweb` | l'angolo (es. soffitto ∩ parete) | x = 60 / W - 60, y = 80 (o il pavimento) |
+| `Barrel` | il centro | y = `pavimento - size.y / 2` (sdraiato: `pavimento - size.x / 2`) |
+| `EdgeWeb` | l'estremità sinistra del bordo | y = bordo inferiore della piattaforma / del soffitto |
+| `Fan`, `Vent`, `WallSwitch`, `WallSocket`, `ExposedBricks`, `Dust` | il centro | libera, sul muro |
+| `WallCrack` | il punto da cui parte la crepa | libera, sul muro |
+| `SackPile` | la base al centro | y = `pavimento` |
+| `Jar` | la base | y = `pavimento` |
+| `Rope` | il punto d'aggancio | y = 80 (bordo inferiore del soffitto) |
+| `Pipe` | il primo punto di `points` (gomito: il punto d'angolo) | libera; poi sposta i punti / regola i bracci |
 
 Esempio: un `PushBox` 160×160 su un pavimento a y = 2420 va a y = 2340.
 
@@ -361,6 +454,39 @@ da lì: in gioco si cancella da solo, quindi puoi lasciarlo nel livello.
 - Le sezioni che si superano solo col flash vanno distanziate di **almeno
   360 px**, così non si possono saltare.
 
+### 7.1 Anteprima delle ombre (`FlashPreview`)
+
+Trascina `prefabs/gizmos/flash_preview.tscn` nel livello e mettilo dove la lampadina
+farà il flash: l'origine sono i **piedi**, come per `JumpArc`. Il gizmo usa
+lo stesso calcolo del gioco e si aggiorna da solo quando sposti o
+ridimensioni casse, muri, vetri e finestre.
+
+- **Sagoma gialla**: la lampadina fantasma; il cerchio grande è il raggio
+  del flash (preso dal `Player`, oppure da `flash_radius` se > 0).
+- **Viola**: le ombre solide che nascono dal flash.
+- **Bordo verde**: i lati delle ombre su cui si cammina (rivolti verso
+  l'alto, pendenza fino a 55°). Da sotto le ombre si attraversano.
+- **Giallo tenue**: i fasci delle finestre, che cancellano le ombre.
+- **X rossa** con *dentro un fascio*: da lì il flash non fa ombre.
+- La scritta *flash: N ombre* dice quante ombre nascono.
+
+Opzioni nell'Inspector:
+
+- `windows_open`: spegnilo per vedere le ombre con le persiane chiuse
+  (per le finestre intermittenti controlla entrambi i casi).
+- `rail_crates_arrived`: mette le `RailCrate` a fine corsa, cioè com'è il
+  livello dopo aver premuto il pulsante.
+- `show_jump_arc`: disegna anche le curve del salto da quel punto, per
+  vedere se dall'ombra si arriva dove serve.
+
+Per un flash fatto **in salto** alza il gizmo (al massimo ~290 px sopra il
+pavimento). Per una sequenza di flash metti un gizmo per ogni flash; le ombre
+durano 4 s. Anche questo gizmo in gioco si cancella da solo.
+
+Limiti: la `PushBox` è considerata dov'è nell'editor (per provarla spostata
+duplica il livello o sposta temporaneamente la cassa) e le ombre di gizmo
+diversi non si influenzano tra loro, come in gioco.
+
 ---
 
 ## 8. Registrare e provare il livello
@@ -384,10 +510,10 @@ il livello dal menu. F6 funziona anche se il livello non è ancora in
 
 ## 9. Limiti dell'editor
 
-- Le ombre generate dal flash si vedono solo in gioco: `shadow_system` non
-  gira nell'editor. Per verificare un puzzle con le ombre bisogna quindi
-  avviare il gioco.
-- Delle finestre nell'editor si vede solo la cornice: il fascio di luce (e la
-  persiana intermittente) compare solo in gioco.
+- Le ombre generate dal flash nell'editor si vedono solo con un
+  `FlashPreview` ([7.1](#71-anteprima-delle-ombre-flashpreview)); la durata
+  e i tempi (persiane, gocce) vanno comunque provati in gioco.
+- Delle finestre nell'editor si vede solo la cornice: il fascio di luce
+  compare solo in gioco o nell'anteprima di un `FlashPreview`.
 - Dei rubinetti nell'editor si vede una linea tratteggiata fino al punto in
   cui atterrano le gocce; le gocce vere solo in gioco.

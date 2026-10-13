@@ -76,7 +76,11 @@ func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	_time += delta
-	_polygons = _compute_beam()
+	var opaque: Array[PackedVector2Array] = []
+	for solid in get_tree().get_nodes_in_group("solids"):
+		if not solid.is_in_group("transparent"):
+			opaque.append(solid.get_world_polygon())
+	_polygons = compute_beam(opaque)
 	_visual.queue_redraw()
 	queue_redraw()
 
@@ -87,18 +91,17 @@ func _front() -> Vector2:
 	return normal if normal.dot(direction) > 0.0 else -normal
 
 
-## Fascio meno le zone coperte da solidi opachi (ciascuno estruso lungo la luce).
-func _compute_beam() -> Array[PackedVector2Array]:
+## Fascio meno le zone coperte dai solidi opachi (ciascuno estruso lungo la
+## luce). Pubblica perché la usa anche l'anteprima nell'editor (FlashPreview).
+func compute_beam(opaque: Array[PackedVector2Array]) -> Array[PackedVector2Array]:
 	var dir := direction.normalized()
 	var reach := length if length > 0.0 else MAX_LENGTH
 	var a := global_transform * Vector2(0, -opening / 2.0)
 	var b := global_transform * Vector2(0, opening / 2.0)
 	var beams: Array[PackedVector2Array] = [PackedVector2Array([a, b, b + dir * reach, a + dir * reach])]
 	var front := ShadowSystem._half_plane(global_position + _front() * 2.0, _front())
-	for solid in get_tree().get_nodes_in_group("solids"):
-		if solid.is_in_group("transparent"):
-			continue
-		for part in Geometry2D.intersect_polygons(solid.get_world_polygon(), front):
+	for polygon in opaque:
+		for part in Geometry2D.intersect_polygons(polygon, front):
 			var swept := part.duplicate()
 			for v in part:
 				swept.append(v + dir * reach)

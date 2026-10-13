@@ -165,6 +165,8 @@ func _on_player_died() -> void:
 	_shadows.clear()
 	for box in get_tree().get_nodes_in_group("push_boxes"):
 		box.reset()
+	for jar in get_tree().get_nodes_in_group("jars"):
+		jar.reset()
 	player.respawn(_spawn_point)
 	_focus_y = player.global_position.y
 	if _follow:

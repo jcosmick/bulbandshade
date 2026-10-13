@@ -830,6 +830,134 @@ def music():
 
 
 
+def modes(freq, dur, partials, decay):
+    """Sintesi modale: parziali (rapporto, ampiezza, frazione di decay) che si spengono
+    ciascuno per conto suo; i parziali alti muoiono prima, come negli oggetti veri."""
+    t = t_of(dur)
+    x = np.zeros(len(t))
+    for ratio, amp, d in partials:
+        phase = rng.uniform(0, 2 * np.pi)
+        x += amp * np.sin(2 * np.pi * freq * ratio * t + phase) * np.exp(-t / (decay * d))
+    return x * env(len(t), 0.0004, 10.0)
+
+
+def loop_xfade(out, dur, xfade):
+    """Taglia un loop di `dur` secondi sfumando la coda in eccesso dentro la testa."""
+    n = int(RATE * dur)
+    tail = out[n: n + int(RATE * xfade)]
+    fade = np.linspace(0, 1, len(tail))
+    loop = out[:n].copy()
+    loop[:len(tail)] = loop[:len(tail)] * fade + tail * (1 - fade)
+    return loop
+
+
+def can():
+    # Lattina di latta calciata: "tlonk" metallico e vuoto. La lamiera sottile ha parziali
+    # inarmonici fitti (il "clang"), la cavità d'aria dà il corpo "tonk" grave, e il bordo
+    # che rimbalza sul cemento aggiunge un paio di micro-scatti di latta che sferragliano.
+    shell = ((1.0, 1.0, 1.0), (1.47, 0.7, 0.8), (2.09, 0.55, 0.6), (2.56, 0.45, 0.5),
+             (3.31, 0.35, 0.35), (4.18, 0.25, 0.25), (5.43, 0.18, 0.18))
+    for i, (f0, body_f) in enumerate(((820, 340), (760, 310), (900, 370)), 1):
+        dur = 0.32
+        out = np.zeros(int(RATE * dur))
+        # Colpo: rumore brillante cortissimo (la latta che "schiocca").
+        place(out, bandpass(click(0.015, 0.0015, 1500), 2500, 9000), 0.0, 0.7)
+        # Lamiera: un leggero stiramento casuale dei rapporti rende ogni variante diversa.
+        jitter = tuple((r * rng.uniform(0.98, 1.02), a, d) for r, a, d in shell)
+        place(out, modes(f0, dur, jitter, 0.07), 0.0, 0.8)
+        # Distorsione morbida: i parziali si "sporcano" a vicenda, più lamiera e meno campanella.
+        out = np.tanh(out * 1.8) / 1.8
+        # Cavità: tono vuoto e scuro che scende un po' mentre si smorza.
+        place(out, thump(body_f, body_f * 0.85, 0.12, 0.035), 0.0, 0.5)
+        # Sferragliata: il bordo tocca il pavimento ancora un paio di volte, sempre più piano.
+        at = 0.0
+        for k in range(rng.integers(2, 4)):
+            at += rng.uniform(0.035, 0.06)
+            tick = modes(f0 * rng.uniform(1.4, 1.8), 0.05, shell[:4], 0.012)
+            tick += pad(bandpass(click(0.01, 0.001, 2000), 3000, 8000), 0.05) * 0.6
+            place(out, tick, at, 0.3 * 0.55 ** k)
+        save(f"can_{i}.wav", room(lowpass(out, 9000), 0.35, 0.12), peak=0.6)
+
+
+def glass_hit():
+    # Barattolo / bottiglia di vetro: "clink" spesso. Il "tok" sordo del fondo che batte, poi
+    # il vetro che canta: parziali alti e puri (rapporti da coppa) che durano più della latta,
+    # con un battimento leggero (due modi quasi uguali) che lo fa "vibrare". Stessa palette
+    # FM dei campanelli della lampadina, per tenere vetro con vetro.
+    cup = ((1.0, 1.0, 1.0), (1.004, 0.6, 1.0), (2.32, 0.5, 0.55), (4.25, 0.3, 0.3),
+           (6.63, 0.15, 0.18))
+    for i, f0 in enumerate((1480, 1390, 1570), 1):
+        dur = 0.55
+        out = np.zeros(int(RATE * dur))
+        place(out, lowpass(click(0.012, 0.0012, 600), 3500), 0.0, 0.5)
+        place(out, thump(420, 260, 0.05, 0.012), 0.0, 0.55)
+        place(out, modes(f0, dur, cup, 0.16), 0.002, 0.55)
+        place(out, glass(f0 * 2.0, 0.2, 0.05, index=1.4), 0.002, 0.2)
+        # Un secondo contatto leggero ("cli-clink") subito dopo.
+        at = rng.uniform(0.045, 0.07)
+        place(out, modes(f0 * 1.02, 0.25, cup, 0.06), at, 0.18)
+        save(f"glass_{i}.wav", room(lowpass(out, 10000), 0.5, 0.15), peak=0.55)
+
+
+def resonate(x, modes_):
+    """Banco di risonatori (filtri a due poli molto stretti): il rumore che li attraversa
+    "suona" come l'oggetto che ha quei modi. modes_ = (frequenza, banda in Hz, guadagno)."""
+    out = np.zeros(len(x))
+    for freq, bw, gain in modes_:
+        r = np.exp(-np.pi * bw / RATE)
+        a1, a2 = -2 * r * np.cos(2 * np.pi * freq / RATE), r * r
+        y = np.empty(len(x))
+        y1 = y2 = 0.0
+        for i, v in enumerate(x * (1 - r)):
+            y0 = v - a1 * y1 - a2 * y2
+            y[i] = y0
+            y2, y1 = y1, y0
+        out += y * gain
+    return out
+
+
+# Modi della lamiera della ventola (cornice e pale stampate): inarmonici e fitti.
+FAN_METAL = ((540, 6, 1.0), (812, 7, 0.8), (1193, 9, 0.7), (1655, 11, 0.5),
+             (2247, 14, 0.4), (3018, 18, 0.25), (3870, 24, 0.15))
+
+
+def fan():
+    # Ventola da muro arrugginita, due strati che lo script lega alla rotazione:
+    # - fan_grind (loop): la lamiera della cornice che vibra mentre gira: ronzio metallico
+    #   liscio e intonato; il pitch segue la velocità.
+    # - fan_air (loop): spostamento d'aria leggero, morbido e scuro; lo script ne alza il
+    #   volume quando passa una pala ("fff... fff").
+    dur, xfade = 2.0, 0.3
+    total = dur + xfade
+    # Lamiera che "canta" piano mentre gira: niente grani (sembravano sabbia), un'eccitazione
+    # liscia e scura che fa risuonare solo i modi bassi della cornice, molto stretti. Ne esce
+    # un ronzio metallico intonato che ondeggia lento (periodo = loop).
+    t = t_of(total)
+    excite = bandpass(noise(total), 400, 1400)
+    # Modi un po' più larghi e quelli alti attenuati: il metallo resta, senza fischiare.
+    soft = ((540, 1.0), (812, 0.6), (1193, 0.3), (1655, 0.12))
+    hum = resonate(excite, tuple((f, bw * 0.8, g * k) for (f, bw, g), (_, k) in zip(FAN_METAL, soft)))
+    hum *= 1 + 0.25 * np.sin(2 * np.pi * t / dur)
+    save("fan_grind.wav", loop_xfade(lowpass(hum, 1300), dur, xfade), peak=0.5, fade_out=False)
+    # Aria: loop lungo (12 s) perché la ripetizione non si riconosca. Raffiche lente e
+    # irregolari invece di un "respiro" fitto, e il colore che vira piano tra un soffio più
+    # cupo e uno un po' più aperto; nessun dettaglio che spicca e fa da "segnaposto" al loop.
+    dur, xfade = 12.0, 1.5
+    total = dur + xfade
+    t = t_of(total)
+
+    def drift(step, lo, hi, cutoff):
+        knots = np.arange(0, total + step, step)
+        return lowpass(np.interp(t, knots, rng.uniform(lo, hi, len(knots))), cutoff)
+
+    gust = drift(1.3, 0.55, 1.0, 0.6)
+    color = drift(2.1, 0.0, 1.0, 0.4)
+    dark = bandpass(noise(total), 150, 700)
+    open_ = bandpass(noise(total), 300, 1300)
+    air = (dark * (1 - 0.6 * color) + open_ * (0.4 + 0.6 * color)) * gust
+    save("fan_air.wav", loop_xfade(lowpass(air, 1400), dur, xfade), peak=0.5, fade_out=False)
+
+
 def lowpass_rate(x, cutoff, rate):
     alpha = 1 - np.exp(-2 * np.pi * cutoff / rate)
     y = np.empty_like(x)
@@ -842,7 +970,7 @@ def lowpass_rate(x, cutoff, rate):
 
 SFX = (jump, land, flash, flash_ready, flash_dud, drip, death, tap, button,
        checkpoint, collect, mini_flash, victory, step, shadow_step, push,
-       flicker_off, flicker_on, shadow_dissolve, shadow_puff)
+       flicker_off, flicker_on, shadow_dissolve, shadow_puff, can, glass_hit, fan)
 ALL = {f.__name__: f for f in SFX + (music, varianti)}
 
 OUT.mkdir(parents=True, exist_ok=True)

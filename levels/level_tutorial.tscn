@@ -5,9 +5,9 @@
 [ext_resource type="Script" uid="uid://c7ngnkpr6cikx" path="res://scripts/block.gd" id="3"]
 [ext_resource type="Script" uid="uid://kt1g27e60883" path="res://scripts/player.gd" id="4"]
 [ext_resource type="Script" uid="uid://bj4aruw1g0xq8" path="res://scripts/goal_lamp.gd" id="5"]
-[ext_resource type="PackedScene" path="res://prefabs/crate.tscn" id="6_v5f2i"]
-[ext_resource type="PackedScene" path="res://prefabs/water_pool.tscn" id="7_le33n"]
-[ext_resource type="PackedScene" path="res://prefabs/jump_arc.tscn" id="8_tkx4x"]
+[ext_resource type="PackedScene" path="res://prefabs/level_structures/crate.tscn" id="6_v5f2i"]
+[ext_resource type="PackedScene" path="res://prefabs/level_structures/water_pool.tscn" id="7_le33n"]
+[ext_resource type="PackedScene" path="res://prefabs/gizmos/jump_arc.tscn" id="8_tkx4x"]
 [ext_resource type="Script" path="res://scripts/intro_tutorial.gd" id="9_intro"]
 [ext_resource type="Script" path="res://scripts/flash_hint.gd" id="10_hint"]
 

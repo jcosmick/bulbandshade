@@ -63,6 +63,9 @@ const DIM_MAX_INTERVAL := 30.0
 const DIM_DURATION := 1.8
 const DIM_DEPTH := 0.25
 const DIM_JITTER := 0.05
+## Camminando su un'ombra, dai piedi si staccano pallini neri che salgono e spariscono.
+const SHADOW_DUST_AMOUNT := 10
+const SHADOW_DUST_LIFETIME := 0.55
 
 @export var flash_radius := 750.0
 ## Secondi di ricarica tra un flash e l'altro.
@@ -103,6 +106,7 @@ var _blink_time := -1.0
 var _look_wait := 0.0
 var _look_target := Vector2.ZERO
 var _look := Vector2.ZERO
+var _shadow_dust: CPUParticles2D
 
 
 func _ready() -> void:
@@ -129,6 +133,37 @@ func _ready() -> void:
 	_dim_wait = randf_range(DIM_MIN_INTERVAL, DIM_MAX_INTERVAL)
 	_blink_wait = randf_range(BLINK_MIN_INTERVAL, BLINK_MAX_INTERVAL)
 	_look_wait = randf_range(LOOK_MIN_INTERVAL, LOOK_MAX_INTERVAL)
+	_shadow_dust = _make_shadow_dust()
+
+
+## Pallini neri ai piedi, come quelli dell'ombra che si sfalda ma più piccoli:
+## restano nel mondo (non seguono la lampadina), salgono piano e si rimpiccioliscono.
+func _make_shadow_dust() -> CPUParticles2D:
+	var dust := CPUParticles2D.new()
+	dust.position = Vector2(0, 52)
+	dust.local_coords = false
+	dust.emitting = false
+	dust.amount = SHADOW_DUST_AMOUNT
+	dust.lifetime = SHADOW_DUST_LIFETIME
+	dust.randomness = 0.5
+	dust.lifetime_randomness = 0.4
+	dust.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	dust.emission_rect_extents = Vector2(16, 2)
+	dust.direction = Vector2.UP
+	dust.spread = 25.0
+	dust.gravity = Vector2(0, -40)
+	dust.initial_velocity_min = 15.0
+	dust.initial_velocity_max = 40.0
+	dust.texture = ShadowPlatform.circle_texture()
+	dust.scale_amount_min = 0.2
+	dust.scale_amount_max = 0.4
+	var curve := Curve.new()
+	curve.add_point(Vector2(0.0, 1.0))
+	curve.add_point(Vector2(1.0, 0.0))
+	dust.scale_amount_curve = curve
+	dust.color = ShadowPlatform.FILL
+	add_child(dust)
+	return dust
 
 
 func light_origin() -> Vector2:
@@ -144,6 +179,7 @@ func die() -> void:
 	_stop_flicker()
 	controls_enabled = false
 	set_physics_process(false)
+	_shadow_dust.emitting = false
 	velocity = Vector2.ZERO
 	_glow.energy = 0.0
 	Sfx.play("death")
@@ -205,6 +241,8 @@ func _physics_process(delta: float) -> void:
 		_squash = Vector2(1.25, 0.8)
 		_play_land(fall_speed)
 	_update_steps(delta)
+	var walking := is_on_floor() and absf(get_real_velocity().x) >= STEP_MIN_SPEED
+	_shadow_dust.emitting = walking and _on_shadow()
 
 	for i in get_slide_collision_count():
 		var collision := get_slide_collision(i)
@@ -286,6 +324,7 @@ func enter_socket(target: Vector2) -> Tween:
 	controls_enabled = false
 	_stop_flicker()
 	set_physics_process(false)
+	_shadow_dust.emitting = false
 	velocity = Vector2.ZERO
 	collision_layer = 0
 	collision_mask = 0

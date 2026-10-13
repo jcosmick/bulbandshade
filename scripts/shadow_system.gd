@@ -163,17 +163,29 @@ func _emit(origin: Vector2, radius: float) -> void:
 
 
 func _cast_shadows(origin: Vector2, radius: float, solids: Dictionary, barriers: Array[PackedVector2Array]) -> void:
-	var bounds := LevelKit.rect_points(level_rect.size)
-	for i in bounds.size():
-		bounds[i] += level_rect.get_center()
+	var casters := get_tree().get_nodes_in_group("casters")
+	var transparent := get_tree().get_nodes_in_group("transparent")
+	for polygon in shadow_polygons(origin, radius, level_rect, solids, casters, transparent, _beam_polygons(), barriers):
+		_spawn(polygon, origin)
 
-	var beams := _beam_polygons()
+
+## Poligoni delle ombre solide generate da un flash in "origin". solids:
+## solido -> poligono nel livello; casters e transparent: sottoinsiemi di solids.
+## Statica perché la usa anche l'anteprima nell'editor (FlashPreview).
+static func shadow_polygons(origin: Vector2, radius: float, rect: Rect2, solids: Dictionary,
+		casters: Array, transparent: Array, beams: Array[PackedVector2Array],
+		barriers: Array[PackedVector2Array]) -> Array[PackedVector2Array]:
+	var result: Array[PackedVector2Array] = []
+	var bounds := LevelKit.rect_points(rect.size)
+	for i in bounds.size():
+		bounds[i] += rect.get_center()
+
 	# Zona dietro i fasci vista dal flash: project() vuole poligoni convessi.
 	var hidden: Array[PackedVector2Array] = []
 	for barrier in barriers:
 		for part in Geometry2D.decompose_polygon_in_convex(barrier):
 			hidden.append_array(project(origin, part, OCCLUSION_RADIUS))
-	for caster in get_tree().get_nodes_in_group("casters"):
+	for caster in casters:
 		var pieces: Array[PackedVector2Array] = []
 		for shadow in project(origin, solids[caster], radius):
 			pieces.append_array(Geometry2D.intersect_polygons(shadow, bounds))
@@ -184,11 +196,12 @@ func _cast_shadows(origin: Vector2, radius: float, solids: Dictionary, barriers:
 			# La zona dietro un altro solido non è raggiunta dalla luce:
 			# lì l'ombra della cassa non esiste (non attraversa i muri).
 			# Il vetro invece lascia passare la luce.
-			if solid != caster and not solid.is_in_group("transparent") and not pieces.is_empty():
+			if solid != caster and not transparent.has(solid) and not pieces.is_empty():
 				pieces = _subtract(pieces, project(origin, solids[solid], OCCLUSION_RADIUS))
 		for i in pieces.size():
 			if _area(pieces[i]) >= MIN_AREA and not _is_hole(i, pieces):
-				_spawn(pieces[i], origin)
+				result.append(pieces[i])
+	return result
 
 
 ## Ombra proiettata da un poligono convesso illuminato da un punto: va dal

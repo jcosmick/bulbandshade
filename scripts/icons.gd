@@ -31,6 +31,8 @@ static func draw(canvas: CanvasItem, icon: String, center: Vector2, size: float)
 			_rail(canvas)
 		"factory":
 			_factory(canvas)
+		"cellar":
+			_cellar(canvas)
 		"lock":
 			_lock(canvas)
 		"bolt":
@@ -114,6 +116,35 @@ static func _factory(canvas: CanvasItem) -> void:
 	canvas.draw_line(Vector2(-23, 0), Vector2(-23, 20), WINDOW_FRAME, 4.0)
 	_crate(canvas, Rect2(6, 8, 30, 30))
 	_drop(canvas, Vector2(-26, -40), 7.0)
+
+
+## Livello 7: cantina con ragnatela, botte, mensola di barattoli e gocciolio.
+static func _cellar(canvas: CanvasItem) -> void:
+	# Ragnatela nell'angolo in alto a sinistra: raggi e fili concentrici.
+	var corner := Vector2(-48, -48)
+	for a in [0.0, PI / 6.0, PI / 3.0, PI / 2.0]:
+		canvas.draw_line(corner, corner + Vector2.from_angle(a) * 44.0, GLASS_EDGE, 2.0)
+	for r in [18.0, 32.0]:
+		canvas.draw_arc(corner, r, 0.0, PI / 2.0, 10, GLASS_EDGE, 2.0)
+	# Mensola con due barattoli.
+	canvas.draw_rect(Rect2(-2, -14, 48, 6), LevelKit.TERRAIN_EDGE)
+	for jar: Rect2 in [Rect2(6, -36, 14, 22), Rect2(26, -30, 14, 16)]:
+		canvas.draw_rect(jar, GLASS_FILL)
+		canvas.draw_rect(Rect2(jar.position.x, jar.end.y - jar.size.y * 0.55, jar.size.x, jar.size.y * 0.55), LevelKit.WOOD)
+		canvas.draw_rect(jar, GLASS_EDGE, false, 3.0)
+		canvas.draw_rect(Rect2(jar.position.x - 2, jar.position.y - 5, jar.size.x + 4, 5), LOCK)
+	# Botte in piedi: fianchi bombati e cerchi di ferro.
+	canvas.draw_colored_polygon(PackedVector2Array([
+		Vector2(-40, -2), Vector2(-10, -2), Vector2(-4, 21), Vector2(-10, 44),
+		Vector2(-40, 44), Vector2(-46, 21)
+	]), LevelKit.WOOD)
+	for x in [-30.0, -20.0]:
+		canvas.draw_line(Vector2(x, -2), Vector2(x, 44), LevelKit.WOOD_DARK, 2.0)
+	for y in [6.0, 36.0]:
+		canvas.draw_line(Vector2(-43, y), Vector2(-7, y), LOCK, 5.0)
+	# Pozza d'acqua e goccia che cade dalla mensola.
+	canvas.draw_rect(Rect2(4, 36, 42, 8), WATER)
+	_drop(canvas, Vector2(26, 16), 6.0)
 
 
 ## Livello bloccato.
