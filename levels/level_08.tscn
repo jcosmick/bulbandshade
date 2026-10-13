@@ -24,6 +24,8 @@
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/water_drip.tscn" id="23_oyse4"]
 [ext_resource type="PackedScene" path="res://prefabs/gameplay/checkpoint.tscn" id="24_oyse4"]
 [ext_resource type="PackedScene" path="res://prefabs/props/pipe.tscn" id="24_tp4tc"]
+[ext_resource type="PackedScene" path="res://prefabs/gizmos/jump_arc.tscn" id="25_i0ocl"]
+[ext_resource type="PackedScene" path="res://prefabs/gameplay/mini_bulb.tscn" id="26_174un"]
 
 [node name="LevelNew" type="Node2D" unique_id=1709908472]
 script = ExtResource("1")
@@ -89,7 +91,7 @@ position = Vector2(1384, 1352)
 [node name="PlantFern" parent="." unique_id=2098909264 instance=ExtResource("14_u7eqt")]
 z_index = -5
 position = Vector2(782, 1498)
-height = 330.0
+height = 380.0
 pot = "none"
 pot_width = 90.0
 pattern = 0
@@ -105,7 +107,7 @@ pattern = 0
 [node name="PlantFern3" parent="." unique_id=79509996 instance=ExtResource("14_u7eqt")]
 z_index = -5
 position = Vector2(2204, 1501)
-height = 330.0
+height = 300.0
 pot = "none"
 pot_width = 90.0
 pattern = 3
@@ -113,7 +115,7 @@ pattern = 3
 [node name="PlantFern4" parent="." unique_id=1111914773 instance=ExtResource("14_u7eqt")]
 z_index = -5
 position = Vector2(1772, 1499)
-height = 330.0
+height = 350.0
 pot = "none"
 pot_width = 90.0
 pattern = 3
@@ -154,6 +156,7 @@ position = Vector2(120, 1029)
 [node name="FlashPreview" parent="." unique_id=916005369 instance=ExtResource("9_gaaq0")]
 z_index = 50
 position = Vector2(1339, 1331)
+windows_open = false
 
 [node name="Vent" parent="." unique_id=1007811661 instance=ExtResource("16_7kdks")]
 z_index = -8
@@ -230,4 +233,33 @@ points = PackedVector2Array(0, 0, 159.33618, 0, 160, -156)
 valve = true
 
 [node name="Checkpoint" parent="." unique_id=1627458432 instance=ExtResource("24_oyse4")]
-position = Vector2(2502, 1420)
+position = Vector2(2157, 1109)
+
+[node name="Block3" parent="." unique_id=2057277685 instance=ExtResource("6_fenrf")]
+position = Vector2(2172, 1128)
+
+[node name="WaterDrip2" parent="." unique_id=1221536114 instance=ExtResource("23_oyse4")]
+position = Vector2(2145, 1273)
+
+[node name="GlassPane2" parent="." unique_id=1141837431 instance=ExtResource("12_tir3y")]
+position = Vector2(2542, 849)
+
+[node name="JumpArc" parent="." unique_id=1505462864 instance=ExtResource("25_i0ocl")]
+position = Vector2(2268, 1105)
+
+[node name="JumpArc2" parent="." unique_id=263437522 instance=ExtResource("25_i0ocl")]
+position = Vector2(574, 810)
+
+[node name="GlassPane3" parent="." unique_id=1272393166 instance=ExtResource("12_tir3y")]
+position = Vector2(2524, 283)
+
+[node name="GlassPane4" parent="." unique_id=1548582936 instance=ExtResource("12_tir3y")]
+position = Vector2(2205, 725)
+
+[node name="Crate3" parent="." unique_id=620418413 instance=ExtResource("11_ck2xc")]
+position = Vector2(2164, 664)
+
+[node name="MiniBulb" parent="." unique_id=943388293 instance=ExtResource("26_174un")]
+position = Vector2(2522, 214)
+id = "level08_purple"
+color = Color(0.7649443, 0.26576748, 0.80302566, 1)
