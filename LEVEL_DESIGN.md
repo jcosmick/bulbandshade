@@ -1,31 +1,62 @@
 # Creare un livello in Godot
 
 I livelli si fanno direttamente nell'editor di Godot: tutti gli elementi
-(`Block`, `PushBox`, `Crate`, ...) sono script `@tool` e si disegnano mentre
-li sposti e li ridimensioni.
+(`Block`, `PushBox`, `WindowLight`, ...) sono script `@tool` e si disegnano
+mentre li sposti e li ridimensioni.
 
-## Prefab disponibili (`prefabs/`)
+**Indice**
 
-| Prefab | Cosa è | Parametri principali |
-|---|---|---|
-| `block.tscn` | Terreno solido (pavimenti, pareti, sporgenze) | `size` |
-| `crate.tscn` | Cassa di legno che proietta un'ombra solida al flash | `size` |
-| `hanging_crate.tscn` | Cassa appesa con catena (la catena è solo decorativa) | `size`, `chain_length` |
-| `push_box.tscn` | Cassa spingibile | `size` |
-| `glass_pane.tscn` | Vetro: solido ma lascia passare la luce | `size` |
-| `water_pool.tscn` | Acqua (cortocircuito) | `size` |
-| `water_drip.tscn` | Tubo che gocciola | `interval`, `phase`, `mount`, `pipe_length` |
-| `window_light.tscn` | Finestra con fascio di luce, anche intermittente | `opening`, `direction`, `on_time`, `off_time`, `phase` |
-| `rail_crate.tscn` | Cassa che scorre su un binario quando viene attivata | `size`, `chain_length`, `travel`, `rail_left`, `rail_right`, `hanger_length`, `speed` |
-| `floor_button.tscn` | Pulsante a pavimento | `target` (nodo da attivare) |
-| `mini_bulb.tscn` | Mini lampadina collezionabile | `id` (unico!), `color` |
-| `checkpoint.tscn` | Punto di ripartenza | — |
-| `goal.tscn` | Portalampada di arrivo | — |
-| `player.tscn` | La lampadina | `flash_radius`, `flash_cooldown`, `show_jump_arc` |
-| `jump_arc.tscn` | Gizmo del salto (solo editor) | `fall_depth` |
-| `level_template.tscn` | Livello vuoto di partenza | — |
+1. [Passi per un nuovo livello](#1-passi-per-un-nuovo-livello)
+2. [Coordinate: le due regole da ricordare](#2-coordinate-le-due-regole-da-ricordare)
+3. [La stanza e la telecamera](#3-la-stanza-e-la-telecamera)
+4. [Prefab disponibili](#4-prefab-disponibili)
+5. [Dove va l'origine di ogni elemento](#5-dove-va-lorigine-di-ogni-elemento)
+6. [Meccaniche speciali](#6-meccaniche-speciali)
+7. [Controllare i salti](#7-controllare-i-salti)
+8. [Registrare e provare il livello](#8-registrare-e-provare-il-livello)
+9. [Limiti dell'editor](#9-limiti-delleditor)
 
-## Coordinate: le due regole da ricordare
+---
+
+## 1. Passi per un nuovo livello
+
+Panoramica; ogni passo rimanda alla sezione con i dettagli.
+
+1. **Copia il template.** Nel pannello FileSystem fai tasto destro su
+   `prefabs/level_template.tscn` → *Duplicate…*, chiamalo per esempio
+   `levels/level_08.tscn` e aprilo. Contiene già sfondo, soffitto, pareti,
+   pavimento, `Player` e `Goal`.
+
+2. **Imposta il nodo radice.** Nell'Inspector:
+   - `level_name`: il titolo mostrato nel menu, nel formato `8 · Nome`
+     (il menu mostra la parte dopo `·`)
+   - `icon`: l'icona della scheda nel menu (`crate`, `glass`, `rain`,
+     `warehouse`, `rail`, `factory`)
+   - `level_rect`: l'area del livello
+
+3. **Adatta la stanza** a `level_rect`: sfondo, soffitto, pareti e pavimento
+   → [sezione 3](#3-la-stanza-e-la-telecamera).
+
+4. **Aggiungi gli elementi.** Trascina un `.tscn` da `prefabs/`
+   ([sezione 4](#4-prefab-disponibili)) nella vista 2D e regola i parametri
+   nell'Inspector. Per la posizione usa la [sezione 5](#5-dove-va-lorigine-di-ogni-elemento).
+   - Per ridimensionare usa `size`, **non** lo scale del nodo.
+   - Attiva lo snap alla griglia (icona magnete nella toolbar 2D, passo 10–20 px).
+   - Ctrl+D duplica un elemento già configurato.
+   - Dai nomi chiari ai nodi (`LedgeGoal`, `PitWater`, ...).
+   - I nodi devono chiamarsi **esattamente `Player` e `Goal`** ed essere
+     figli diretti della radice: il gioco li cerca per nome. Se Godot
+     rinomina un'istanza (es. `Goal2`), correggila.
+
+5. **Controlla i salti** con le curve del `Player` e i `JumpArc`
+   → [sezione 7](#7-controllare-i-salti).
+
+6. **Registra il livello** in `progress.gd` e **provalo** con F6
+   → [sezione 8](#8-registrare-e-provare-il-livello).
+
+---
+
+## 2. Coordinate: le due regole da ricordare
 
 - **y cresce verso il basso.** (0, 0) è l'angolo in alto a sinistra del livello.
 - **Ogni elemento con `size` è centrato sul suo nodo.** Per un blocco che va
@@ -43,7 +74,11 @@ Nel resto del file **W** e **H** sono larghezza e altezza di `level_rect`, e
 **"pavimento"** è la y del bordo *superiore* della superficie su cui l'oggetto
 appoggia.
 
-## La stanza: valori in base a `level_rect`
+---
+
+## 3. La stanza e la telecamera
+
+### Valori in base a `level_rect`
 
 Quando cambi `level_rect` sul nodo radice, aggiorna anche questi nodi del
 template. Questi sono i valori usati nei livelli esistenti:
@@ -52,9 +87,9 @@ template. Questi sono i valori usati nei livelli esistenti:
 |---|---|---|
 | radice (`Level`) | — | `level_rect = (0, 0, W, H)` |
 | `Background` | — | `rect = (0, 0, W, H)`, `wainscot_y = H - 400` |
-| `Ceiling` | `(W/2, 40)` | `(W, 80)` |
-| `WallLeft` | `(30, H/2)` | `(60, H)` |
-| `WallRight` | `(W - 30, H/2)` | `(60, H)` |
+| `Ceiling` | `(W/2, 40)` | `(W, 80)` → bordo inferiore a y = 80 |
+| `WallLeft` | `(30, H/2)` | `(60, H)` → superficie a x = 60 |
+| `WallRight` | `(W - 30, H/2)` | `(60, H)` → superficie a x = W - 60 |
 | `Floor` | `(W/2, H - 50)` | `(W, 100)` → pavimento a `H - 100` |
 
 - `wainscot_y` è dove finisce la carta da parati a righe e inizia la
@@ -83,31 +118,141 @@ metti un blocco basso (`PitBottom`, alto 20, a y = `H - 10`). Se la fossa è
 piena d'acqua aggiungi un `WaterPool` largo quanto la fossa, appoggiato sul
 fondo: `y = fondo - size.y / 2`.
 
-## Dove va l'origine di ogni elemento
+### Telecamera
 
-| Elemento | L'origine è... | y da impostare |
+La telecamera non va aggiunta al livello: la crea `game.gd` e dipende solo da
+`level_rect`.
+
+- Se `level_rect` **sta nello schermo** (fino a 1080 px di larghezza e circa
+  1520 di altezza), la telecamera è **fissa** e inquadra tutto il livello.
+- Se è **più largo di 1080 px o più alto dello schermo**, la telecamera mostra
+  1080 px di larghezza e **segue la lampadina** senza uscire da `level_rect`.
+
+Quindi `level_rect` deve coprire esattamente il livello: se è più grande si
+vedono zone vuote, se è più piccolo pezzi di livello restano fuori
+inquadratura (e le ombre si fermano al suo bordo).
+
+---
+
+## 4. Prefab disponibili
+
+Tutti in `prefabs/`. Le **varianti** sono lo stesso script con valori già
+impostati: puoi sempre partire dal prefab base e cambiare i parametri.
+
+### Struttura
+
+| Prefab | Cosa è | Parametri principali |
 |---|---|---|
-| `Block`, `Crate`, `PushBox`, `GlassPane`, `WaterPool` | il centro | `pavimento - size.y / 2` (se appoggia) |
-| `Player` | il centro della capsula | `pavimento - 52` |
-| `Goal` | il bordo superiore del portalampada | `pavimento - 120` |
-| `Checkpoint` | la base | `pavimento` |
-| `FloorButton` | la base | `pavimento` |
-| `JumpArc` | i piedi | `pavimento` |
-| `MiniBulb` | il centro del vetro | `pavimento - 50` (se appoggiata) |
-| `RailCrate` | il centro della cassa nella posizione di **partenza** | vedi sotto |
+| `level_template.tscn` | Livello vuoto di partenza | — |
+| `block.tscn` | Terreno solido (pavimenti, pareti, sporgenze) | `size` |
+
+### Giocatore e obiettivi
+
+| Prefab | Cosa è | Parametri principali |
+|---|---|---|
+| `player.tscn` | La lampadina | `flash_radius` (750), `flash_cooldown` (2.5 s), `show_jump_arc` |
+| `goal.tscn` | Portalampada di arrivo | — |
+| `checkpoint.tscn` | Punto di ripartenza | — |
+| `mini_bulb.tscn` | Mini lampadina collezionabile → [6.2](#62-lucine-collezionabili-minibulb) | `id` (unico!), `color` |
+
+### Casse (proiettano un'ombra solida al flash)
+
+| Prefab | Cosa è | Parametri principali |
+|---|---|---|
+| `crate.tscn` | Cassa di legno fissa, 120×90 | `size` |
+| `tall_crate.tscn` | Variante: cassa alta 140×300 (colonna / muro d'ombra) | `size` |
+| `hanging_crate.tscn` | Cassa appesa con catena (la catena è solo decorativa) | `size`, `chain_length` |
+| `push_box.tscn` | Cassa spingibile, cade con la gravità | `size` |
+| `rail_crate.tscn` | Cassa che scorre su un binario quando viene attivata → [6.1](#61-pulsante-che-muove-una-cassa-floorbutton--railcrate) | `size`, `chain_length`, `travel`, `rail_left`, `rail_right`, `hanger_length`, `speed` |
+
+`crate`, `tall_crate` e `hanging_crate` sono tutti `Block` con
+`casts_shadow = true`: un `Block` qualsiasi diventa una cassa attivando
+`casts_shadow`, e prende una catena impostando `chain_length > 0`.
+
+### Vetro
+
+| Prefab | Cosa è | Parametri principali |
+|---|---|---|
+| `glass_pane.tscn` | Lastra/mensola di vetro 200×30: solida ma lascia passare la luce | `size` |
+| `glass_cube.tscn` | Variante: cubo di vetro 160×160 | `size` |
+
+### Luce
+
+Il fascio di una finestra impedisce alle ombre solide di esistere dove passa.
+Muri e casse lo bloccano, il vetro no.
+
+| Prefab | Cosa è | Parametri principali |
+|---|---|---|
+| `window_light.tscn` | Finestra sulla **parete sinistra**, fascio verso destra | `opening`, `direction`, `length`, `on_time`, `off_time`, `phase` |
+| `window_light_right.tscn` | Variante: finestra sulla **parete destra** (ruotata 180°), fascio verso sinistra | come sopra |
+| `skylight.tscn` | Variante: lucernario sul **soffitto** (ruotato 90°), fascio verso il basso | come sopra |
+
+- `direction` è in coordinate del livello e va scelta coerente con la parete:
+  x positiva per la parete sinistra, x negativa per la destra, `(0, 1)` per
+  il lucernario. La y dà l'inclinazione (es. `(1, 0.1)` quasi orizzontale,
+  `(1, 0.5)` in diagonale).
+- `length`: lunghezza massima del fascio (0 = finché non incontra un muro).
+- **Persiana intermittente:** con `on_time` e `off_time` > 0 la finestra si
+  apre e chiude a ciclo (es. 2.5 / 2.5). Usa `phase` per sfasare più finestre.
+
+### Acqua (cortocircuito)
+
+| Prefab | Cosa è | Parametri principali |
+|---|---|---|
+| `water_pool.tscn` | Pozza d'acqua | `size` |
+| `water_drip.tscn` | Rubinetto che gocciola. Le gocce attraversano le ombre solide e si fermano solo sulle superfici vere | `interval`, `phase`, `mount`, `pipe_length`, `max_fall` |
+
+- `mount`: dove è fissato il tubo — `ceiling`, `wall_left`, `wall_right`.
+  Allunga `pipe_length` finché il tubo tocca il soffitto o la parete.
+- `phase`: ritardo della prima goccia, per non sincronizzare più rubinetti.
+
+### Interazione e tutorial
+
+| Prefab | Cosa è | Parametri principali |
+|---|---|---|
+| `floor_button.tscn` | Pulsante a pavimento → [6.1](#61-pulsante-che-muove-una-cassa-floorbutton--railcrate) | `target` (nodo da attivare) |
+| `flash_hint.tscn` | Zona invisibile: finché la lampadina è dentro col flash carico, il pulsante del flash pulsa → [6.3](#63-suggerimento-del-flash-flashhint) | `size` |
+
+### Strumenti (solo editor)
+
+| Prefab | Cosa è | Parametri principali |
+|---|---|---|
+| `jump_arc.tscn` | Gizmo del salto, in gioco si cancella da solo → [sezione 7](#7-controllare-i-salti) | `fall_depth` |
+
+---
+
+## 5. Dove va l'origine di ogni elemento
+
+| Elemento | L'origine è... | Posizione da impostare |
+|---|---|---|
+| `Block`, `Crate`, `TallCrate`, `PushBox`, `GlassPane`, `GlassCube`, `WaterPool`, `FlashHint` | il centro | y = `pavimento - size.y / 2` (se appoggia) |
+| `HangingCrate` | il centro della cassa (la catena sale da sopra) | y libera; `chain_length` fino al soffitto |
+| `Player` | il centro della capsula | y = `pavimento - 52` |
+| `Goal` | il bordo superiore del portalampada | y = `pavimento - 120` |
+| `Checkpoint` | la base | y = `pavimento` |
+| `FloorButton` | la base | y = `pavimento` |
+| `JumpArc` | i piedi | y = `pavimento` |
+| `MiniBulb` | il centro del vetro | y = `pavimento - 50` (se appoggiata) |
+| `WindowLight` | la superficie del muro, centro dell'apertura | x = 60 (sinistra) / x = W - 60 (destra) |
+| `Skylight` | la superficie del soffitto, centro dell'apertura | y = 80 (bordo inferiore del soffitto) |
+| `WaterDrip` | la bocca del rubinetto (le gocce partono da lì) | libera; poi regola `pipe_length` |
+| `RailCrate` | il centro della cassa nella posizione di **partenza** | vedi [6.1](#61-pulsante-che-muove-una-cassa-floorbutton--railcrate) |
 
 Esempio: un `PushBox` 160×160 su un pavimento a y = 2420 va a y = 2340.
 
-## Pulsante che muove una cassa (`FloorButton` + `RailCrate`)
+---
+
+## 6. Meccaniche speciali
+
+### 6.1 Pulsante che muove una cassa (`FloorButton` + `RailCrate`)
 
 Il pulsante si preme quando ci sale sopra la **lampadina**: le casse spinte
 non lo premono. Resta premuto per sempre e chiama `activate()` sul suo
 `target`. Al momento l'unico elemento che ha `activate()` è `RailCrate`, che
 scorre una volta sola da partenza ad arrivo.
 
-### 1. Posiziona la cassa sul binario
-
-Trascina `rail_crate.tscn` nel livello e mettilo **dove la cassa parte**.
+**Passo 1 — la cassa sul binario.** Trascina `rail_crate.tscn` nel livello e
+mettilo **dove la cassa parte**.
 
 - `travel`: di quanto si sposta in orizzontale (negativo = verso sinistra).
   Nell'editor l'**arrivo** è disegnato come rettangolo di legno trasparente:
@@ -138,7 +283,7 @@ Esempio dal livello 6: cassa a `(520, 900)`, `size (140, 100)`,
 `chain_length 663`, soffitto fino a y = 80 →
 `hanger_length = 900 - 50 - 663 - 34 - 80 = 73`.
 
-### 2. Posiziona il pulsante
+**Passo 2 — il pulsante.**
 
 1. Trascina `floor_button.tscn` nel livello con l'origine **sul pavimento**
    (y = bordo superiore della superficie). Il pulsante è largo 90 px:
@@ -152,7 +297,7 @@ Mettilo dove la lampadina lo raggiunge **prima** di aver bisogno della cassa,
 e controlla con un `JumpArc` che, a cassa arrivata, il percorso sia davvero
 superabile.
 
-## Lucine collezionabili (`MiniBulb`)
+### 6.2 Lucine collezionabili (`MiniBulb`)
 
 Quando la lampadina tocca una mini lampadina, questa viene **salvata subito**
 nei progressi, anche se il livello non viene finito. Da quel momento:
@@ -177,81 +322,72 @@ Per aggiungerne una:
    livello 4, verde nel 5, blu nel 7), ad esempio giallo
    `(1, 0.85, 0.25)` o viola `(0.7, 0.4, 1)`. È il colore che si vede anche
    nel menu.
-4. **Registra il livello** in `progress.gd` (vedi sotto). Con F6 su un livello
-   non registrato i progressi non si salvano, quindi la lucina **non
-   apparirà nel menu**.
+4. **Registra il livello** in `progress.gd` ([sezione 8](#8-registrare-e-provare-il-livello)).
+   Con F6 su un livello non registrato i progressi non si salvano, quindi la
+   lucina **non apparirà nel menu**.
 
 Per riprovare a raccoglierla, cancella i progressi: il file è
 `%APPDATA%\Godot\app_userdata\Bulb & Shade\progress.cfg` (sezione
 `[mini_bulbs]`, oppure tutto il file).
 
-## Passi per un nuovo livello
+### 6.3 Suggerimento del flash (`FlashHint`)
 
-1. **Copia il template.** Nel pannello FileSystem fai tasto destro su
-   `prefabs/level_template.tscn` → *Duplicate…*, chiamalo per esempio
-   `levels/level_07.tscn` e aprilo. Contiene già sfondo, soffitto, pareti,
-   pavimento, `Player` e `Goal`.
+Una zona rettangolare invisibile in gioco (nell'editor è un riquadro giallo
+con scritto *flash hint*). Mentre la lampadina è dentro e il flash è carico,
+il pulsante del flash pulsa per suggerire di usarlo. Smette appena la
+lampadina fa un flash; se esce e rientra (es. dopo essere caduta in acqua)
+ricomincia.
 
-2. **Imposta il nodo radice.** Nell'Inspector:
-   - `level_name`: il titolo mostrato nel menu, nel formato `7 · Nome`
-     (il menu mostra la parte dopo `·`)
-   - `icon`: l'icona della scheda nel menu
-   - `level_rect`: l'area del livello
+- Mettila dove il giocatore **deve** usare il flash per proseguire, coprendo
+  la zona da cui il flash funziona (nel tutorial: 248×180 davanti alla cassa).
+- Deve essere figlia diretta della radice del livello, accanto al `Player`.
+- Usala con parsimonia: è pensata per i primi livelli.
 
-   Poi aggiorna sfondo, soffitto, pareti e pavimento con la tabella
-   *La stanza* qui sopra.
+---
 
-3. **Aggiungi gli elementi.** Trascina un `.tscn` da `prefabs/` nella vista 2D,
-   poi regola i parametri nell'Inspector.
-   - Per ridimensionare usa `size`, **non** lo scale del nodo.
-   - Attiva lo snap alla griglia (icona magnete nella toolbar 2D, passo 10–20 px).
-   - Ctrl+D duplica un elemento già configurato.
-   - Dai nomi chiari ai nodi (`LedgeGoal`, `PitWater`, ...).
-   - I nodi devono chiamarsi **esattamente `Player` e `Goal`**: il gioco li
-     cerca per nome. Se Godot rinomina un'istanza (es. `Goal2`), correggila.
+## 7. Controllare i salti
 
-4. **Controlla i salti.** Il `Player` mostra nell'editor le curve del salto:
-   - **gialla**: salto pieno con rincorsa (atterra ~475 px più in là alla stessa quota)
-   - **azzurra**: salto da fermo (~435 px)
-   - **tratteggio**: altezza massima, **~290 px**
+Il `Player` mostra nell'editor le curve del salto (`show_jump_arc`):
 
-   Metti un `JumpArc` sul bordo di ogni piattaforma per vedere dove si arriva
-   da lì: in gioco si cancella da solo, quindi puoi lasciarlo nel livello.
-   Le curve seguono i piedi; il corpo sporge ~30 px per lato.
-   Le sezioni che si superano solo col flash vanno distanziate di **almeno
-   360 px**, così non si possono saltare.
+- **gialla**: salto pieno con rincorsa (atterra ~475 px più in là alla stessa quota)
+- **azzurra**: salto da fermo (~435 px)
+- **tratteggio**: altezza massima, **~290 px**
 
-5. **Registra il livello.** Aggiungi il percorso in fondo a `LEVELS` in
-   `scripts/progress.gd`:
+Metti un `JumpArc` sul bordo di ogni piattaforma per vedere dove si arriva
+da lì: in gioco si cancella da solo, quindi puoi lasciarlo nel livello.
+`fall_depth` regola quanto in basso proseguono le curve.
 
-   ```gdscript
-   "res://levels/level_07.tscn",
-   ```
+- Le curve seguono i piedi; il corpo sporge ~30 px per lato.
+- Le sezioni che si superano solo col flash vanno distanziate di **almeno
+  360 px**, così non si possono saltare.
 
-   Senza questo passaggio il livello non compare nel menu e i progressi
-   (record e lucine) non vengono salvati.
+---
 
-6. **Provalo.** Con il livello aperto premi **F6**: il livello riparte dentro
-   `scenes/game.tscn` (telecamera, buio, ombre, comandi). Oppure F5 e scegli
-   il livello dal menu. F6 funziona anche se il livello non è ancora in
-   `progress.gd`, ma in quel caso i progressi non vengono salvati.
+## 8. Registrare e provare il livello
 
-## Telecamera
+**Registra.** Aggiungi il percorso in fondo a `LEVELS` in
+`scripts/progress.gd`:
 
-La telecamera non va aggiunta al livello: la crea `game.gd` e dipende solo da
-`level_rect`.
+```gdscript
+"res://levels/level_08.tscn",
+```
 
-- Se `level_rect` **sta nello schermo** (fino a 1080 px di larghezza e circa
-  1520 di altezza), la telecamera è **fissa** e inquadra tutto il livello.
-- Se è **più largo di 1080 px o più alto dello schermo**, la telecamera mostra
-  1080 px di larghezza e **segue la lampadina** senza uscire da `level_rect`.
+Senza questo passaggio il livello non compare nel menu e i progressi
+(record e lucine) non vengono salvati.
 
-Quindi `level_rect` deve coprire esattamente il livello: se è più grande si
-vedono zone vuote, se è più piccolo pezzi di livello restano fuori
-inquadratura (e le ombre si fermano al suo bordo).
+**Prova.** Con il livello aperto premi **F6**: il livello riparte dentro
+`scenes/game.tscn` (telecamera, buio, ombre, comandi). Oppure F5 e scegli
+il livello dal menu. F6 funziona anche se il livello non è ancora in
+`progress.gd`, ma in quel caso i progressi non vengono salvati.
 
-## Limiti
+---
 
-Le ombre generate dal flash si vedono solo in gioco: `shadow_system` non gira
-nell'editor. Per verificare un puzzle con le ombre bisogna quindi avviare il
-gioco.
+## 9. Limiti dell'editor
+
+- Le ombre generate dal flash si vedono solo in gioco: `shadow_system` non
+  gira nell'editor. Per verificare un puzzle con le ombre bisogna quindi
+  avviare il gioco.
+- Delle finestre nell'editor si vede solo la cornice: il fascio di luce (e la
+  persiana intermittente) compare solo in gioco.
+- Dei rubinetti nell'editor si vede una linea tratteggiata fino al punto in
+  cui atterrano le gocce; le gocce vere solo in gioco.

@@ -32,6 +32,15 @@ const STEP_IDLE_RESET := 0.15
 ## Camminata: quanto si solleva e quanto dondola la lampadina a ogni passo.
 const WALK_BOB := 7.0
 const WALK_TILT := 0.065
+## Da ferma: respiro leggero (ampiezza e velocità), sbattere d'occhi e occhiate in giro.
+const IDLE_BREATH := 0.022
+const IDLE_BREATH_SPEED := 2.4
+const BLINK_MIN_INTERVAL := 2.0
+const BLINK_MAX_INTERVAL := 5.0
+const BLINK_DURATION := 0.14
+const LOOK_MIN_INTERVAL := 1.2
+const LOOK_MAX_INTERVAL := 3.5
+const LOOK_RANGE := Vector2(4.0, 2.5)
 
 const GLASS_COLOR := Color(1.0, 0.95, 0.72)
 const FILAMENT_COLOR := Color(1.0, 0.55, 0.12)
@@ -41,11 +50,19 @@ const METAL_DARK := Color(0.38, 0.38, 0.42)
 const EYE_COLOR := Color(0.15, 0.1, 0.05)
 const DEAD_GLASS := Color(0.45, 0.47, 0.52)
 const SPARK_COLOR := Color(0.7, 0.9, 1.0)
+## Sfarfallio disattivato per ora (potrebbe spaventare): al suo posto c'è l'affievolimento.
+const FLICKER_ENABLED := false
 ## Ogni tanto la lampadina sfarfalla: intervallo casuale (secondi) tra uno sfarfallio e l'altro.
 const FLICKER_MIN_INTERVAL := 20.0
 const FLICKER_MAX_INTERVAL := 50.0
 ## Durate alternate spenta/accesa dello sfarfallio (inizia e finisce spenta).
 const FLICKER_PATTERN: Array[float] = [0.07, 0.06, 0.05, 0.12, 0.22]
+## Affievolimento: ogni tanto la luce cala un poco, tremola appena e torna normale.
+const DIM_MIN_INTERVAL := 12.0
+const DIM_MAX_INTERVAL := 30.0
+const DIM_DURATION := 1.8
+const DIM_DEPTH := 0.25
+const DIM_JITTER := 0.05
 
 @export var flash_radius := 750.0
 ## Secondi di ricarica tra un flash e l'altro.
@@ -76,6 +93,16 @@ var _flicker_wait := 0.0
 ## Tempo dall'inizio dello sfarfallio in corso, negativo se non sta sfarfallando.
 var _flicker_time := -1.0
 var _flickering_off := false
+var _dim_wait := 0.0
+## Tempo dall'inizio dell'affievolimento in corso, negativo se la luce è normale.
+var _dim_time := -1.0
+var _idle_time := 0.0
+var _blink_wait := 0.0
+## Tempo dall'inizio dell'ammiccamento in corso, negativo se gli occhi sono aperti.
+var _blink_time := -1.0
+var _look_wait := 0.0
+var _look_target := Vector2.ZERO
+var _look := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -99,6 +126,9 @@ func _ready() -> void:
 	# Solo il flash si ferma contro i fasci delle finestre.
 	_flash_light.shadow_item_cull_mask = 1 | ShadowSystem.BEAM_OCCLUDER_MASK
 	_flicker_wait = randf_range(FLICKER_MIN_INTERVAL, FLICKER_MAX_INTERVAL)
+	_dim_wait = randf_range(DIM_MIN_INTERVAL, DIM_MAX_INTERVAL)
+	_blink_wait = randf_range(BLINK_MIN_INTERVAL, BLINK_MAX_INTERVAL)
+	_look_wait = randf_range(LOOK_MIN_INTERVAL, LOOK_MAX_INTERVAL)
 
 
 func light_origin() -> Vector2:
@@ -284,9 +314,58 @@ func _process(delta: float) -> void:
 		return
 	# Mentre si ricarica la lampadina è più fioca.
 	if controls_enabled:
-		_update_flicker(delta)
-		_glow.energy = 0.0 if _flickering_off else lerpf(0.55, 1.0, flash_charge())
+		if FLICKER_ENABLED:
+			_update_flicker(delta)
+		else:
+			_update_dim(delta)
+		_glow.energy = 0.0 if _flickering_off else lerpf(0.55, 1.0, flash_charge()) * _dim_factor()
+	_update_idle(delta)
 	queue_redraw()
+
+
+## Vita da ferma: respira sempre, sbatte gli occhi e, se non cammina, si guarda attorno.
+func _update_idle(delta: float) -> void:
+	_idle_time += delta
+	if _blink_time >= 0.0:
+		_blink_time += delta
+		if _blink_time >= BLINK_DURATION:
+			_blink_time = -1.0
+			# Ogni tanto un doppio ammiccamento.
+			_blink_wait = 0.12 if randf() < 0.2 else randf_range(BLINK_MIN_INTERVAL, BLINK_MAX_INTERVAL)
+	else:
+		_blink_wait -= delta
+		if _blink_wait <= 0.0:
+			_blink_time = 0.0
+	var idle := is_on_floor() and _walk_blend == 0.0 and controls_enabled
+	if not idle:
+		_look_target = Vector2.ZERO
+		_look_wait = randf_range(LOOK_MIN_INTERVAL, LOOK_MAX_INTERVAL)
+	else:
+		_look_wait -= delta
+		if _look_wait <= 0.0:
+			_look_wait = randf_range(LOOK_MIN_INTERVAL, LOOK_MAX_INTERVAL)
+			# Ogni tanto torna a guardare davanti a sé.
+			_look_target = Vector2.ZERO if randf() < 0.4 else Vector2(
+				randf_range(-LOOK_RANGE.x, LOOK_RANGE.x), randf_range(-LOOK_RANGE.y, LOOK_RANGE.y))
+	_look = _look.lerp(_look_target, minf(1.0, 14.0 * delta))
+
+
+## Apertura degli occhi: 1 = aperti, 0 = chiusi a metà ammiccamento.
+func _eye_open() -> float:
+	if _blink_time < 0.0:
+		return 1.0
+	return absf(1.0 - 2.0 * _blink_time / BLINK_DURATION)
+
+
+func _draw_eye(center: Vector2, radius: float, open: float) -> void:
+	if open < 0.2:
+		draw_line(center + Vector2(-radius, 0), center + Vector2(radius, 0), EYE_COLOR, 2.5)
+		return
+	var points := PackedVector2Array()
+	for i in 12:
+		var angle := i * TAU / 12.0
+		points.append(center + Vector2(cos(angle) * radius, sin(angle) * radius * open))
+	draw_colored_polygon(points, EYE_COLOR)
 
 
 ## Sfarfallio casuale: per un attimo la lampadina si spegne e si riaccende.
@@ -306,6 +385,27 @@ func _update_flicker(delta: float) -> void:
 			return
 	_set_flickering_off(false)
 	_stop_flicker()
+
+
+func _update_dim(delta: float) -> void:
+	if _dim_time < 0.0:
+		_dim_wait -= delta
+		if _dim_wait <= 0.0:
+			_dim_time = 0.0
+		return
+	_dim_time += delta
+	if _dim_time >= DIM_DURATION:
+		_dim_time = -1.0
+		_dim_wait = randf_range(DIM_MIN_INTERVAL, DIM_MAX_INTERVAL)
+
+
+## Moltiplicatore della luce: cala dolcemente e risale, con un tremolio appena accennato.
+func _dim_factor() -> float:
+	if _dim_time < 0.0:
+		return 1.0
+	var envelope := sin(_dim_time / DIM_DURATION * PI)
+	var jitter := sin(_dim_time * 37.0) * sin(_dim_time * 23.0) * DIM_JITTER
+	return 1.0 - (DIM_DEPTH + jitter) * envelope
 
 
 ## Spegne/riaccende la luce dello sfarfallio, con lo scatto del filamento a ogni cambio.
@@ -328,7 +428,11 @@ func _draw() -> void:
 	var phase := _step_count + _step_travel / STEP_DISTANCE
 	var bob := -absf(sin(phase * PI)) * WALK_BOB * _walk_blend
 	var tilt := cos(phase * PI) * WALK_TILT * _walk_blend
-	draw_set_transform(Vector2(0, 52 + bob), tilt, _squash)
+	# Respiro: si allunga e si stringe appena, sparisce mentre cammina.
+	var breath := sin(_idle_time * IDLE_BREATH_SPEED) * IDLE_BREATH * (1.0 - _walk_blend)
+	if dead:
+		breath = 0.0
+	draw_set_transform(Vector2(0, 52 + bob), tilt, _squash * Vector2(1.0 - breath * 0.6, 1.0 + breath))
 	var glass_center := Vector2(0, -68)
 	var glass := DEAD_GLASS if dead or _flickering_off else GLASS_COLOR
 	draw_circle(glass_center, 38.0, glass)
@@ -343,9 +447,10 @@ func _draw() -> void:
 	for i in 3:
 		draw_line(Vector2(-17, -30 + i * 8), Vector2(17, -27 + i * 8), METAL_DARK, 3.0)
 	draw_rect(Rect2(-9, -8, 18, 8), Color(0.2, 0.2, 0.22))
-	var eye_x := 7.0 * _facing
-	draw_circle(Vector2(eye_x - 11, -80), 5.0, EYE_COLOR)
-	draw_circle(Vector2(eye_x + 11, -80), 5.0, EYE_COLOR)
+	var eye_center := Vector2(7.0 * _facing, -80) + _look
+	var eye_open := 1.0 if dead else _eye_open()
+	_draw_eye(eye_center + Vector2(-11, 0), 5.0, eye_open)
+	_draw_eye(eye_center + Vector2(11, 0), 5.0, eye_open)
 	draw_arc(glass_center, 29.0, PI * 1.1, PI * 1.45, 8, Color(1, 1, 1, 0.75), 4.0)
 	if dead and _dead_time < 0.6:
 		# Scintille a zig-zag attorno al vetro.
