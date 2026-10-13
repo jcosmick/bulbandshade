@@ -6,7 +6,21 @@
 [ext_resource type="Script" uid="uid://kt1g27e60883" path="res://scripts/player.gd" id="4"]
 [ext_resource type="Script" uid="uid://bj4aruw1g0xq8" path="res://scripts/goal_lamp.gd" id="5"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/block.tscn" id="6_fenrf"]
-[ext_resource type="PackedScene" path="res://prefabs/level_structures/skylight.tscn" id="7_oxu25"]
+[ext_resource type="PackedScene" path="res://prefabs/level_structures/water_basin.tscn" id="8_oxu25"]
+[ext_resource type="PackedScene" path="res://prefabs/gizmos/flash_preview.tscn" id="9_gaaq0"]
+[ext_resource type="PackedScene" path="res://prefabs/level_structures/glass_cube.tscn" id="10_ck2xc"]
+[ext_resource type="PackedScene" path="res://prefabs/level_structures/crate.tscn" id="11_ck2xc"]
+[ext_resource type="PackedScene" path="res://prefabs/level_structures/glass_pane.tscn" id="12_tir3y"]
+[ext_resource type="PackedScene" path="res://prefabs/gizmos/jump_arc.tscn" id="13_7nmir"]
+[ext_resource type="PackedScene" path="res://prefabs/level_structures/tall_crate.tscn" id="14_8symd"]
+[ext_resource type="PackedScene" path="res://prefabs/props/ground_plant.tscn" id="14_u7eqt"]
+[ext_resource type="PackedScene" path="res://prefabs/level_structures/push_box.tscn" id="15_1yggu"]
+[ext_resource type="PackedScene" path="res://prefabs/props/vent.tscn" id="16_7kdks"]
+[ext_resource type="PackedScene" path="res://prefabs/props/vine.tscn" id="17_f4orn"]
+[ext_resource type="PackedScene" path="res://prefabs/props/sack_pile.tscn" id="18_0gjl2"]
+[ext_resource type="PackedScene" path="res://prefabs/props/barrel.tscn" id="19_fs5cg"]
+[ext_resource type="PackedScene" path="res://prefabs/props/cobweb_spider.tscn" id="20_0gjl2"]
+[ext_resource type="PackedScene" path="res://prefabs/props/jar.tscn" id="21_fs5cg"]
 
 [node name="LevelNew" type="Node2D" unique_id=1709908472]
 script = ExtResource("1")
@@ -50,8 +64,145 @@ script = ExtResource("4")
 position = Vector2(3891, 474)
 size = Vector2(300, 40)
 
-[node name="Skylight" parent="." unique_id=1919400050 instance=ExtResource("7_oxu25")]
-position = Vector2(584, 80)
+[node name="WaterBasin" parent="." unique_id=1458199737 instance=ExtResource("8_oxu25")]
+position = Vector2(1482, 1420)
+size = Vector2(1800, 100)
+left_wall = false
+right_wall = false
 
-[node name="Skylight2" parent="." unique_id=643997952 instance=ExtResource("7_oxu25")]
-position = Vector2(1044, 80)
+[node name="GlassCube" parent="." unique_id=1793183690 instance=ExtResource("10_ck2xc")]
+position = Vector2(511, 1379)
+size = Vector2(100, 80)
+
+[node name="Crate2" parent="." unique_id=724878514 instance=ExtResource("11_ck2xc")]
+position = Vector2(1414, 1298)
+size = Vector2(103, 80)
+
+[node name="GlassPane" parent="." unique_id=1903976048 instance=ExtResource("12_tir3y")]
+position = Vector2(1384, 1352)
+
+[node name="PlantFern" parent="." unique_id=2098909264 instance=ExtResource("14_u7eqt")]
+z_index = -5
+position = Vector2(782, 1498)
+height = 330.0
+pot = "none"
+pot_width = 90.0
+pattern = 0
+
+[node name="PlantFern2" parent="." unique_id=753745713 instance=ExtResource("14_u7eqt")]
+z_index = -5
+position = Vector2(1287, 1494)
+height = 330.0
+pot = "none"
+pot_width = 90.0
+pattern = 0
+
+[node name="PlantFern3" parent="." unique_id=79509996 instance=ExtResource("14_u7eqt")]
+z_index = -5
+position = Vector2(2204, 1501)
+height = 330.0
+pot = "none"
+pot_width = 90.0
+pattern = 3
+
+[node name="PlantFern4" parent="." unique_id=1111914773 instance=ExtResource("14_u7eqt")]
+z_index = -5
+position = Vector2(1772, 1499)
+height = 330.0
+pot = "none"
+pot_width = 90.0
+pattern = 3
+
+[node name="Block2" parent="." unique_id=1581950920 instance=ExtResource("6_fenrf")]
+position = Vector2(862, 491)
+size = Vector2(600, 40)
+
+[node name="TallCrate" parent="." unique_id=1482864328 instance=ExtResource("14_8symd")]
+position = Vector2(1122, 255.00006)
+scale = Vector2(1, 0.4800012)
+size = Vector2(80, 1050)
+casts_shadow = false
+
+[node name="PushBox" parent="." unique_id=1004277573 instance=ExtResource("15_1yggu")]
+position = Vector2(782, 431)
+size = Vector2(103, 80)
+
+[node name="GlassCube2" parent="." unique_id=1040674746 instance=ExtResource("10_ck2xc")]
+position = Vector2(1000, 456)
+size = Vector2(160, 30)
+
+[node name="GlassCube3" parent="." unique_id=1442023252 instance=ExtResource("10_ck2xc")]
+position = Vector2(141, 1090)
+size = Vector2(160, 30)
+
+[node name="GlassCube4" parent="." unique_id=2067517127 instance=ExtResource("10_ck2xc")]
+position = Vector2(485, 861)
+size = Vector2(180, 30)
+
+[node name="GlassCube5" parent="." unique_id=1929218090 instance=ExtResource("10_ck2xc")]
+position = Vector2(565, 828)
+size = Vector2(20, 30)
+
+[node name="Crate" parent="." unique_id=2052497552 instance=ExtResource("11_ck2xc")]
+position = Vector2(120, 1029)
+
+[node name="FlashPreview" parent="." unique_id=916005369 instance=ExtResource("9_gaaq0")]
+z_index = 50
+position = Vector2(272, 1418)
+
+[node name="JumpArc2" parent="." unique_id=1081876331 instance=ExtResource("13_7nmir")]
+position = Vector2(224, 598)
+
+[node name="Vent" parent="." unique_id=1007811661 instance=ExtResource("16_7kdks")]
+z_index = -8
+position = Vector2(1062, 1141)
+
+[node name="Vent2" parent="." unique_id=1258150103 instance=ExtResource("16_7kdks")]
+z_index = -8
+position = Vector2(1964, 1141)
+
+[node name="Vine" parent="." unique_id=1140306563 instance=ExtResource("17_f4orn")]
+z_index = -5
+position = Vector2(401, 874)
+width = 170.0
+length = 180.0
+leaf_style = "heart"
+flowers = true
+pattern = 2
+
+[node name="Vine2" parent="." unique_id=1048621960 instance=ExtResource("17_f4orn")]
+z_index = -5
+position = Vector2(73, 1105)
+width = 130.0
+length = 120.0
+leaf_style = "heart"
+pattern = 2
+
+[node name="SackPile" parent="." unique_id=290330120 instance=ExtResource("18_0gjl2")]
+z_index = -5
+position = Vector2(297, 1420)
+
+[node name="Barrel" parent="." unique_id=1470874017 instance=ExtResource("19_fs5cg")]
+z_index = -5
+position = Vector2(138, 1360)
+
+[node name="GroundPlant" parent="." unique_id=338621090 instance=ExtResource("14_u7eqt")]
+z_index = -5
+position = Vector2(973, 438)
+kind = "monstera"
+height = 250.0
+pot_width = 100.0
+pattern = 4
+
+[node name="CobwebSpider" parent="." unique_id=784702864 instance=ExtResource("20_0gjl2")]
+z_index = -5
+position = Vector2(1080, 79)
+spider_drop = 0.0
+
+[node name="Jar" parent="." unique_id=713428647 instance=ExtResource("21_fs5cg")]
+z_index = -4
+position = Vector2(1044, 440)
+
+[node name="GroundPlant2" parent="." unique_id=51794138 instance=ExtResource("14_u7eqt")]
+z_index = -5
+position = Vector2(439, 845)

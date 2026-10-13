@@ -88,6 +88,8 @@ func _compute(root: Node) -> void:
 	var player: Player = null
 	var signature := [global_transform, flash_radius, windows_open, rail_crates_arrived]
 	for node in _descendants(root):
+		if node is Block and node.is_cut():
+			continue  # al suo posto contano i pezzi figli
 		if node is Block or node is GlassPane or node is PushBox or node is RailCrate:
 			var polygon: PackedVector2Array = node.get_world_polygon()
 			if node is RailCrate and rail_crates_arrived:

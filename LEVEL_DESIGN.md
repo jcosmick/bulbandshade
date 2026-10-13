@@ -118,6 +118,15 @@ metti un blocco basso (`PitBottom`, alto 20, a y = `H - 10`). Se la fossa è
 piena d'acqua aggiungi un `WaterPool` largo quanto la fossa, appoggiato sul
 fondo: `y = fondo - size.y / 2`.
 
+Più semplice: usa **`water_basin.tscn`**, che crea da solo fondo, sponde e
+acqua **e taglia da solo il pavimento** (`cut_floor`, attivo di default): non
+serve spezzare il `Floor`. Mettilo con `y = pavimento` (il bordo delle sponde
+a filo del pavimento) e scegli la larghezza con `size.x`. Nell'editor il buco
+segue la vasca quando la sposti. Si tagliano solo i `Block` di terreno: le
+casse (`casts_shadow`) e quelle appese restano intere. Per una vasca da
+saltare appoggiata sul pavimento usa `y = pavimento - size.y` (toccandolo
+soltanto non lo taglia).
+
 ### Telecamera
 
 La telecamera non va aggiunta al livello: la crea `game.gd` e dipende solo da
@@ -209,6 +218,7 @@ Muri e casse lo bloccano, il vetro no.
 | Prefab | Cosa è | Parametri principali |
 |---|---|---|
 | `water_pool.tscn` | Pozza d'acqua | `size` |
+| `water_basin.tscn` | Vasca contenuta: fondo + sponde + acqua in un solo nodo, con anteprima nell'editor | `size`, `cut_floor`, `wall_thickness`, `bottom_thickness`, `freeboard`, `left_wall`, `right_wall` |
 | `water_drip.tscn` | Rubinetto che gocciola. Le gocce attraversano le ombre solide e si fermano solo sulle superfici vere | `interval`, `phase`, `mount`, `pipe_length`, `max_fall` |
 
 - `mount`: dove è fissato il tubo — `ceiling`, `wall_left`, `wall_right`.
@@ -285,6 +295,8 @@ Non bloccano la lampadina e non fanno ombra: si muovono e basta.
 | `jar.tscn` | Barattolo (`kind`: `jar` vasetto, `can` latta, `bottle` bottiglia): camminandoci contro (o atterrandoci sopra) la lampadina lo calcia; saltella, rimbalza sui muri e può restare sdraiato o capovolto | `kind` |
 | `rope.tscn` | Fune appesa che ondeggia quando la lampadina la attraversa | `length`, `segments`, `end_style`, `thickness` |
 | `rope_hook.tscn` | Variante: fune con gancio in fondo | come sopra |
+| `ground_plant.tscn` | Pianta da serra a terra; ogni foglia si piega quando la lampadina la tocca | `kind`, `height`, `pot`, `pot_width`, `pattern` |
+| `vine.tscn` | Rampicante che pende sotto un bordo; i tralci si scostano al passaggio | `width`, `length`, `density`, `leaf_style`, `flowers`, `pattern` |
 
 - I barattoli si fermano sui solidi, sulle ombre solide (se l'ombra sparisce
   cadono) e sugli altri barattoli: si possono **impilare**. Per metterne uno
@@ -294,6 +306,17 @@ Non bloccano la lampadina e non fanno ombra: si muovono e basta.
   altro lo spinge. Quando la lampadina riparte dal checkpoint tornano al loro posto,
   come le casse spingibili.
 - `end_style` della fune: `knot` (nodo), `hook` (gancio), `loop` (cappio).
+- Piante da serra: le foglie ondeggiano piano; ogni foglia o fronda si
+  piega solo quando la lampadina la tocca, e toccando i fusti (palma, banano)
+  si muove tutta la chioma sopra. `kind`: `palm` (areca a più fusti),
+  `monstera` (su un tutore), `fern` (felce, in vaso sta su un trespolo alto
+  circa metà pianta), `banana`, `cactus` (rigido, non si muove); `pot`:
+  `terracotta`, `planter` (fioriera) o `none` (piantata nel pavimento).
+  `height` è l'altezza indicativa vaso compreso (la lampadina è alta 104).
+- Rampicanti: come `EdgeWeb` pendono sotto una linea lunga `width` che parte
+  dall'origine verso destra. `length` è la lunghezza dei tralci più lunghi,
+  `density` quanti tralci ogni 100 px, `leaf_style` `ivy` o `heart`.
+- `pattern` di piante e rampicanti: come per crepe e ragnatele, cambia la forma.
 
 ### Strumenti (solo editor)
 
@@ -319,6 +342,7 @@ Non bloccano la lampadina e non fanno ombra: si muovono e basta.
 | `MiniBulb` | il centro del vetro | y = `pavimento - 50` (se appoggiata) |
 | `WindowLight` | la superficie del muro, centro dell'apertura | x = 60 (sinistra) / x = W - 60 (destra) |
 | `Skylight` | la superficie del soffitto, centro dell'apertura | y = 80 (bordo inferiore del soffitto) |
+| `WaterBasin` | il centro del bordo superiore delle sponde | y = `pavimento` (incassata) o `pavimento - size.y` (appoggiata) |
 | `WaterDrip` | la bocca del rubinetto (le gocce partono da lì) | libera; poi regola `pipe_length` |
 | `RailCrate` | il centro della cassa nella posizione di **partenza** | vedi [6.1](#61-pulsante-che-muove-una-cassa-floorbutton--railcrate) |
 | `Cobweb` | l'angolo (es. soffitto ∩ parete) | x = 60 / W - 60, y = 80 (o il pavimento) |
@@ -329,6 +353,8 @@ Non bloccano la lampadina e non fanno ombra: si muovono e basta.
 | `SackPile` | la base al centro | y = `pavimento` |
 | `Jar` | la base | y = `pavimento` |
 | `Rope` | il punto d'aggancio | y = 80 (bordo inferiore del soffitto) |
+| `GroundPlant` | la base al centro | y = `pavimento` |
+| `HangingVine` (`vine`) | l'estremità sinistra del bordo | y = bordo inferiore della piattaforma / del soffitto |
 | `Pipe` | il primo punto di `points` (gomito: il punto d'angolo) | libera; poi sposta i punti / regola i bracci |
 
 Esempio: un `PushBox` 160×160 su un pavimento a y = 2420 va a y = 2340.
