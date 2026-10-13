@@ -91,33 +91,106 @@ const GIRDER_LIGHT := Color(0.26, 0.26, 0.31)
 const PILLAR_STEP := 720.0
 const PILLAR_WIDTH := 48.0
 
+## In gioco ogni strato di serra e magazzino viene disegnato una volta sola in
+## una texture: migliaia di rettangoli e cerchi diventano un solo sprite per
+## strato. Risoluzione della texture rispetto al livello, per strato: quelli
+## sfocati o lisci reggono bene una risoluzione bassa (meno memoria).
+const BAKE_SCALE := {
+	"greenhouse": {BASE: 0.25, FAR: 0.4, NEAR: 0.4, FROST_LAYER: 0.25},
+	"warehouse": {BACK: 0.5, FAR: 0.5, NEAR: 0.5, FRONT: 0.5},
+}
+## Lato massimo di una texture (limite sicuro sui telefoni).
+const MAX_TEXTURE := 4096.0
+## Strati, dal più lontano: il fondo (questo nodo), la parete in parallasse
+## del magazzino, il piano lontano, quello vicino, il velo smerigliato della
+## serra e il primo piano fisso. Il primo piano della serra (telaio e mattoni)
+## resta vettoriale per restare nitido: in texture servirebbe a piena
+## risoluzione, troppa memoria.
+const BASE := -2
+const BACK := -1
+const FAR := 0
+const NEAR := 1
+const FROST_LAYER := 2
+const FRONT := 3
+
 var _far: Node2D
 var _near: Node2D
 var _front: Node2D
+## Solo serra: il velo smerigliato davanti alle piante.
+var _frost: Node2D
 ## Solo magazzino: la parete di fondo, in parallasse dietro agli scaffali.
 var _back: Node2D
+## Strato -> texture già disegnata (vuoto finché non è pronta, o nell'editor).
+var _baked := {}
 
 
 func _ready() -> void:
 	z_index = -10
 	# Strati di serra e magazzino, disegnati sopra il fondo in quest'ordine.
 	# Interni: non finiscono nella scena salvata.
-	_back = _make_layer(_paint_layer.bind(-1))
-	_far = _make_layer(_paint_layer.bind(0))
-	_near = _make_layer(_paint_layer.bind(1))
-	_front = _make_layer(_paint_layer.bind(2))
+	_back = _make_layer(BACK)
+	_far = _make_layer(FAR)
+	_near = _make_layer(NEAR)
+	_frost = _make_layer(FROST_LAYER)
+	_front = _make_layer(FRONT)
+	if not Engine.is_editor_hint() and BAKE_SCALE.has(style):
+		_bake.call_deferred()
 
 
-func _make_layer(painter: Callable) -> Node2D:
+func _make_layer(which: int) -> Node2D:
 	var layer := Node2D.new()
-	layer.draw.connect(painter)
+	layer.draw.connect(_draw_layer.bind(which, layer))
 	add_child(layer, false, Node.INTERNAL_MODE_FRONT)
 	return layer
 
 
+## Disegna ogni strato in una texture (una SubViewport per strato, aggiornata
+## una volta). Finché non sono pronte gli strati si disegnano come sempre.
+func _bake() -> void:
+	var scales: Dictionary = BAKE_SCALE[style]
+	var viewports := {}
+	for which: int in scales:
+		var factor := minf(scales[which], MAX_TEXTURE / maxf(rect.size.x, rect.size.y))
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i((rect.size * factor).ceil())
+		viewport.transparent_bg = true
+		viewport.disable_3d = true
+		viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+		var canvas := Node2D.new()
+		canvas.transform = Transform2D(0.0, Vector2(factor, factor), 0.0, -rect.position * factor)
+		canvas.draw.connect(_paint.bind(which, canvas))
+		viewport.add_child(canvas)
+		add_child(viewport, false, Node.INTERNAL_MODE_BACK)
+		viewports[which] = viewport
+	await RenderingServer.frame_post_draw
+	if not is_inside_tree():
+		return
+	# Il disegno sullo sfondo trasparente lascia i colori premoltiplicati per
+	# l'alpha: gli sprite li fondono di conseguenza.
+	var premultiplied := CanvasItemMaterial.new()
+	premultiplied.blend_mode = CanvasItemMaterial.BLEND_MODE_PREMULT_ALPHA
+	for which: int in viewports:
+		var viewport: SubViewport = viewports[which]
+		_baked[which] = ImageTexture.create_from_image(viewport.get_texture().get_image())
+		viewport.queue_free()
+		var layer := _layer(which)
+		layer.material = premultiplied
+		layer.queue_redraw()
+
+
+func _layer(which: int) -> CanvasItem:
+	match which:
+		BACK: return _back
+		FAR: return _far
+		NEAR: return _near
+		FROST_LAYER: return _frost
+		FRONT: return _front
+	return self
+
+
 func _refresh() -> void:
 	queue_redraw()
-	for layer in [_back, _far, _near, _front]:
+	for layer in [_back, _far, _near, _frost, _front]:
 		if layer:
 			layer.queue_redraw()
 
@@ -135,13 +208,21 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	if style == "greenhouse":
-		_draw_glass(self, 1.0)
-		return
-	if style == "warehouse":
-		# Riempie i bordi che la parete in parallasse lascia scoperti.
-		draw_rect(rect, SHEET)
-		return
+	if style == "room":
+		_draw_room()
+	else:
+		_draw_layer(BASE, self)
+
+
+## Uno strato: la texture se è pronta, altrimenti il disegno vero e proprio.
+func _draw_layer(which: int, canvas: CanvasItem) -> void:
+	if _baked.has(which):
+		canvas.draw_texture_rect(_baked[which], rect, false)
+	else:
+		_paint(which, canvas)
+
+
+func _draw_room() -> void:
 	draw_rect(rect, WALL)
 	var x := rect.position.x
 	while x < rect.end.x:
@@ -151,26 +232,27 @@ func _draw() -> void:
 	draw_rect(Rect2(rect.position.x, wainscot_y - 6.0, rect.size.x, 12.0), MOLDING)
 
 
-## Strato -1 (parete), 0 (lontano), 1 (vicino) o 2 (primo piano) dello stile
-## attuale.
-func _paint_layer(which: int) -> void:
-	if which == -1:
-		if style == "warehouse":
-			_draw_sheet_wall()
-	elif style == "greenhouse":
-		if which == 2:
-			_draw_front()
-		else:
-			_draw_foliage(which == 1)
+## Disegna lo strato `which` dello stile attuale su `canvas`.
+func _paint(which: int, canvas: CanvasItem) -> void:
+	if style == "greenhouse":
+		match which:
+			BASE: _draw_glass(canvas, 1.0)
+			FAR, NEAR: _draw_foliage(canvas, which == NEAR)
+			FROST_LAYER: _draw_glass(canvas, FROST)
+			FRONT: _draw_front(canvas)
 	elif style == "warehouse":
-		if which == 2:
-			_draw_pillars()
-		else:
-			_draw_racks(which == 1)
+		match which:
+			# Riempie i bordi che la parete in parallasse lascia scoperti.
+			BASE: canvas.draw_rect(rect, SHEET)
+			BACK: _draw_sheet_wall(canvas)
+			FAR, NEAR: _draw_racks(canvas, which == NEAR)
+			FRONT: _draw_pillars(canvas)
 
 
 ## Lastre di vetro: sfumatura verticale continua, con piccole differenze tra
 ## lastre. Disegnate piene come luce di fondo e semitrasparenti come velo.
+## Ogni lastra copre anche il montante (che ci va sopra): nelle texture a bassa
+## risoluzione i bordi sfumati non lasciano aloni accanto al telaio.
 func _draw_glass(canvas: CanvasItem, alpha: float) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = pattern
@@ -181,7 +263,7 @@ func _draw_glass(canvas: CanvasItem, alpha: float) -> void:
 	while y < wainscot_y:
 		var x := rect.position.x
 		while x < rect.end.x:
-			var pane := Rect2(x + MULLION / 2.0, y + MULLION / 2.0, CELL - MULLION, CELL - MULLION).intersection(area)
+			var pane := Rect2(x - MULLION / 2.0, y - MULLION / 2.0, CELL, CELL).intersection(area)
 			if pane.has_area():
 				var shade := rng.randf_range(-0.025, 0.025)
 				var c_top := GLASS_BOTTOM.lerp(GLASS_TOP, 1.0 - (pane.position.y - top) / span)
@@ -198,8 +280,7 @@ func _draw_glass(canvas: CanvasItem, alpha: float) -> void:
 ## Piante dietro il vetro: macchie sfocate (cerchi concentrici trasparenti).
 ## Restano dentro il fondo: scorrendo escono solo dai lati che la telecamera
 ## non inquadra.
-func _draw_foliage(near: bool) -> void:
-	var layer := _near if near else _far
+func _draw_foliage(layer: CanvasItem, near: bool) -> void:
 	var color := FOLIAGE_NEAR if near else FOLIAGE_FAR
 	var rng := RandomNumberGenerator.new()
 	rng.seed = pattern * 2 + (1 if near else 0)
@@ -221,9 +302,10 @@ func _draw_foliage(near: bool) -> void:
 		x += rng.randf_range(130.0, 240.0) if near else rng.randf_range(90.0, 170.0)
 
 
-## Velo smerigliato, telaio e muretto davanti alle piante.
-func _draw_front() -> void:
-	_draw_glass(_front, FROST)
+## Telaio e muretto davanti al velo smerigliato. Disegnati per tipo (prima
+## tutti i rettangoli, poi le linee, poi i cerchi): alternarli spezzerebbe i
+## batch del renderer in centinaia di draw call.
+func _draw_front(canvas: CanvasItem) -> void:
 	var top := rect.position.y
 	var glass_bottom := wainscot_y
 	# Telaio: pilastri più spessi ogni tanto.
@@ -231,33 +313,19 @@ func _draw_front() -> void:
 	var gx := rect.position.x
 	while gx <= rect.end.x:
 		var width := COLUMN if col % COLUMN_EVERY == 0 else MULLION
-		_front.draw_rect(Rect2(gx - width / 2.0, top, width, glass_bottom - top), IRON)
-		if width == COLUMN:
-			_front.draw_line(Vector2(gx - width / 2.0 + 3.0, top), Vector2(gx - width / 2.0 + 3.0, glass_bottom), IRON_LIGHT, 2.0)
+		canvas.draw_rect(Rect2(gx - width / 2.0, top, width, glass_bottom - top), IRON)
 		gx += CELL
 		col += 1
 	var gy := top
 	while gy <= glass_bottom:
-		_front.draw_rect(Rect2(rect.position.x, gy - MULLION / 2.0, rect.size.x, MULLION), IRON)
-		gy += CELL
-	# Bulloni agli incroci e riflesso in un angolo di ogni lastra.
-	gy = top
-	while gy < glass_bottom:
-		gx = rect.position.x
-		while gx < rect.end.x:
-			_front.draw_circle(Vector2(gx, gy), 4.0, IRON_LIGHT)
-			var corner := Vector2(gx + MULLION / 2.0 + 10.0, gy + MULLION / 2.0 + 10.0)
-			if corner.y + 40.0 < glass_bottom:
-				_front.draw_line(corner + Vector2(0, 40), corner + Vector2(40, 0), GLASS_SHINE, 4.0)
-				_front.draw_line(corner + Vector2(0, 62), corner + Vector2(62, 0), GLASS_SHINE, 2.0)
-			gx += CELL
+		canvas.draw_rect(Rect2(rect.position.x, gy - MULLION / 2.0, rect.size.x, MULLION), IRON)
 		gy += CELL
 
 	# Muretto di mattoni sotto le vetrate, con davanzale.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = pattern
 	var wall := Rect2(rect.position.x, glass_bottom, rect.size.x, rect.end.y - glass_bottom)
-	_front.draw_rect(wall, MORTAR)
+	canvas.draw_rect(wall, MORTAR)
 	var row := 0
 	var y := wall.position.y
 	while y < wall.end.y:
@@ -265,28 +333,65 @@ func _draw_front() -> void:
 		while bx < wall.end.x:
 			var brick := Rect2(bx + 2.0, y + 2.0, BRICK_SIZE.x - 4.0, BRICK_SIZE.y - 4.0).intersection(wall)
 			if brick.has_area():
-				_front.draw_rect(brick, BRICK.lerp(BRICK_DARK, rng.randf()))
+				canvas.draw_rect(brick, BRICK.lerp(BRICK_DARK, rng.randf()))
 			bx += BRICK_SIZE.x
 		y += BRICK_SIZE.y
 		row += 1
-	_front.draw_rect(Rect2(rect.position.x, glass_bottom - 8.0, rect.size.x, 16.0), SILL)
-	_front.draw_rect(Rect2(rect.position.x, glass_bottom + 8.0, rect.size.x, 4.0), MORTAR)
+	canvas.draw_rect(Rect2(rect.position.x, glass_bottom - 8.0, rect.size.x, 16.0), SILL)
+	canvas.draw_rect(Rect2(rect.position.x, glass_bottom + 8.0, rect.size.x, 4.0), MORTAR)
 
+	# Profilo chiaro sui pilastri e riflesso in un angolo di ogni lastra: una
+	# sola multiline per tipo.
+	var profiles := PackedVector2Array()
+	var shine_wide := PackedVector2Array()
+	var shine_thin := PackedVector2Array()
+	col = 0
+	gx = rect.position.x
+	while gx <= rect.end.x:
+		if col % COLUMN_EVERY == 0:
+			var lx := gx - COLUMN / 2.0 + 3.0
+			# Finisce sul davanzale, che ora è disegnato prima.
+			profiles.append_array([Vector2(lx, top), Vector2(lx, glass_bottom - 8.0)])
+		gx += CELL
+		col += 1
+	gy = top
+	while gy < glass_bottom:
+		gx = rect.position.x
+		while gx < rect.end.x:
+			var corner := Vector2(gx + MULLION / 2.0 + 10.0, gy + MULLION / 2.0 + 10.0)
+			if corner.y + 40.0 < glass_bottom:
+				shine_wide.append_array([corner + Vector2(0, 40), corner + Vector2(40, 0)])
+				shine_thin.append_array([corner + Vector2(0, 62), corner + Vector2(62, 0)])
+			gx += CELL
+		gy += CELL
+	canvas.draw_multiline(profiles, IRON_LIGHT, 2.0)
+	canvas.draw_multiline(shine_wide, GLASS_SHINE, 4.0)
+	canvas.draw_multiline(shine_thin, GLASS_SHINE, 2.0)
+	# Bulloni agli incroci: tutti con la stessa texture, così stanno in un batch
+	# (draw_circle genera decine di vertici per cerchio).
+	var bolt := ShadowPlatform.circle_texture()
+	gy = top
+	while gy < glass_bottom:
+		gx = rect.position.x
+		while gx < rect.end.x:
+			canvas.draw_texture_rect(bolt, Rect2(gx - 4.0, gy - 4.0, 8.0, 8.0), false, IRON_LIGHT)
+			gx += CELL
+		gy += CELL
 
 ## Magazzino: lamiera a bande larghe, giunte orizzontali e fascia di cemento.
-func _draw_sheet_wall() -> void:
+func _draw_sheet_wall(canvas: CanvasItem) -> void:
 	var top := rect.position.y
-	_back.draw_rect(rect, SHEET)
+	canvas.draw_rect(rect, SHEET)
 	var x := rect.position.x
 	while x < rect.end.x:
-		_back.draw_rect(Rect2(x, top, minf(RIB_STEP / 2.0, rect.end.x - x), wainscot_y - top), SHEET_RIB)
+		canvas.draw_rect(Rect2(x, top, minf(RIB_STEP / 2.0, rect.end.x - x), wainscot_y - top), SHEET_RIB)
 		x += RIB_STEP
 	var y := top + 300.0
 	while y < wainscot_y:
-		_back.draw_line(Vector2(rect.position.x, y), Vector2(rect.end.x, y), SHEET_SEAM, 4.0)
+		canvas.draw_line(Vector2(rect.position.x, y), Vector2(rect.end.x, y), SHEET_SEAM, 4.0)
 		y += 300.0
-	_back.draw_rect(Rect2(rect.position.x, wainscot_y, rect.size.x, rect.end.y - wainscot_y), CONCRETE)
-	_back.draw_line(Vector2(rect.position.x, wainscot_y), Vector2(rect.end.x, wainscot_y), SHEET_SEAM, 6.0)
+	canvas.draw_rect(Rect2(rect.position.x, wainscot_y, rect.size.x, rect.end.y - wainscot_y), CONCRETE)
+	canvas.draw_line(Vector2(rect.position.x, wainscot_y), Vector2(rect.end.x, wainscot_y), SHEET_SEAM, 6.0)
 
 
 ## Scaffalature su un piano, come sagome piatte senza dettagli: quelle
@@ -294,8 +399,7 @@ func _draw_sheet_wall() -> void:
 ## robuste, con poche scatole, qualche pila a terra e qualche scala. Restano
 ## dentro il fondo: scorrendo escono solo dai lati che la telecamera non
 ## inquadra.
-func _draw_racks(near: bool) -> void:
-	var canvas := _near if near else _far
+func _draw_racks(canvas: CanvasItem, near: bool) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = pattern * 2 + (1 if near else 0)
 	var floor_y := rect.end.y
@@ -400,25 +504,25 @@ func _draw_ladder(canvas: CanvasItem, base: Vector2, rng: RandomNumberGenerator)
 
 
 ## Pilastri in acciaio a I e trave in alto, davanti agli scaffali.
-func _draw_pillars() -> void:
+func _draw_pillars(canvas: CanvasItem) -> void:
 	var top := rect.position.y
 	var x := rect.position.x + PILLAR_STEP / 2.0
 	while x < rect.end.x:
 		var pillar := Rect2(x - PILLAR_WIDTH / 2.0, top, PILLAR_WIDTH, rect.size.y)
-		_front.draw_rect(pillar, GIRDER)
+		canvas.draw_rect(pillar, GIRDER)
 		# Ali della trave a I, più chiare, con i rivetti.
 		for edge in [pillar.position.x, pillar.end.x - 8.0]:
-			_front.draw_rect(Rect2(edge, top, 8.0, rect.size.y), GIRDER_LIGHT)
+			canvas.draw_rect(Rect2(edge, top, 8.0, rect.size.y), GIRDER_LIGHT)
 		var ry := top + 60.0
 		while ry < rect.end.y:
 			for rx in [pillar.position.x + 4.0, pillar.end.x - 4.0]:
-				_front.draw_circle(Vector2(rx, ry), 3.0, GIRDER)
+				canvas.draw_circle(Vector2(rx, ry), 3.0, GIRDER)
 			ry += 60.0
 		# Piastra di base sulla fascia di cemento.
-		_front.draw_rect(Rect2(pillar.position.x - 10.0, rect.end.y - 24.0, PILLAR_WIDTH + 20.0, 24.0), GIRDER_LIGHT)
+		canvas.draw_rect(Rect2(pillar.position.x - 10.0, rect.end.y - 24.0, PILLAR_WIDTH + 20.0, 24.0), GIRDER_LIGHT)
 		x += PILLAR_STEP
-	_front.draw_rect(Rect2(rect.position.x, top, rect.size.x, 40.0), GIRDER)
-	_front.draw_line(Vector2(rect.position.x, top + 38.0), Vector2(rect.end.x, top + 38.0), GIRDER_LIGHT, 4.0)
+	canvas.draw_rect(Rect2(rect.position.x, top, rect.size.x, 40.0), GIRDER)
+	canvas.draw_line(Vector2(rect.position.x, top + 38.0), Vector2(rect.end.x, top + 38.0), GIRDER_LIGHT, 4.0)
 
 
 func _rect_polygon(r: Rect2) -> PackedVector2Array:
