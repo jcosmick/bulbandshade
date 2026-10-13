@@ -32,6 +32,7 @@
 [node name="LevelNew" type="Node2D" unique_id=1709908472]
 script = ExtResource("1")
 level_name = "8 · Greenhouse"
+icon = "greenhouse"
 level_rect = Rect2(0, 0, 4080, 1520)
 
 [node name="Background" type="Node2D" parent="." unique_id=1968676260]

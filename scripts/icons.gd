@@ -13,6 +13,11 @@ const LOCK := Color(0.45, 0.44, 0.5)
 const SHADOW := Color(0, 0, 0, 0.85)
 const GEAR := Color(0.85, 0.82, 0.76)
 const GEAR_HOLE := UiStyle.CARD
+const LEAF := Color(0.36, 0.62, 0.32)
+const LEAF_VEIN := Color(0.22, 0.42, 0.2)
+const STEM := Color(0.3, 0.45, 0.22)
+const TERRACOTTA := Color(0.72, 0.4, 0.27)
+const TERRACOTTA_DARK := Color(0.55, 0.29, 0.2)
 
 
 static func draw(canvas: CanvasItem, icon: String, center: Vector2, size: float) -> void:
@@ -33,6 +38,8 @@ static func draw(canvas: CanvasItem, icon: String, center: Vector2, size: float)
 			_factory(canvas)
 		"cellar":
 			_cellar(canvas)
+		"greenhouse":
+			_greenhouse(canvas)
 		"lock":
 			_lock(canvas)
 		"bolt":
@@ -147,6 +154,38 @@ static func _cellar(canvas: CanvasItem) -> void:
 	_drop(canvas, Vector2(26, 16), 6.0)
 
 
+## Livello 8: serra con tetto di vetro a doppia falda e pianta in vaso.
+static func _greenhouse(canvas: CanvasItem) -> void:
+	# Struttura di vetro: tetto a capanna e pareti, con montanti.
+	var shell := PackedVector2Array([
+		Vector2(-46, 44), Vector2(-46, -14), Vector2(0, -46), Vector2(46, -14), Vector2(46, 44)
+	])
+	canvas.draw_colored_polygon(shell, GLASS_FILL)
+	canvas.draw_polyline(shell, GLASS_EDGE, 4.0)
+	canvas.draw_line(Vector2(-46, -14), Vector2(46, -14), GLASS_EDGE, 3.0)
+	for x in [-23.0, 23.0]:
+		canvas.draw_line(Vector2(x, -30), Vector2(x, 44), GLASS_EDGE, 3.0)
+	canvas.draw_line(Vector2(0, -46), Vector2(0, -14), GLASS_EDGE, 3.0)
+	canvas.draw_line(Vector2(28, -27), Vector2(40, -19), Color(1, 1, 1, 0.7), 3.0)
+	# Rampicante che scende dalla falda sinistra.
+	canvas.draw_polyline(PackedVector2Array([
+		Vector2(-34, -22), Vector2(-38, -6), Vector2(-33, 8), Vector2(-37, 22)
+	]), STEM, 3.0)
+	for leaf: Array in [[Vector2(-38, -8), PI - 0.5, 14.0], [Vector2(-33, 6), 0.5, 14.0], [Vector2(-37, 20), PI - 0.4, 12.0]]:
+		_leaf(canvas, leaf[0], leaf[1], leaf[2])
+	# Pianta in vaso: fusto e foglie a ventaglio.
+	canvas.draw_line(Vector2(8, 22), Vector2(8, -6), STEM, 4.0)
+	for leaf: Array in [[Vector2(8, -6), -PI / 2.0, 20.0], [Vector2(6, 4), -2.5, 18.0],
+			[Vector2(10, 4), -0.65, 18.0], [Vector2(6, 14), -2.8, 14.0], [Vector2(10, 14), -0.35, 14.0]]:
+		_leaf(canvas, leaf[0], leaf[1], leaf[2])
+	canvas.draw_colored_polygon(PackedVector2Array([
+		Vector2(-8, 22), Vector2(24, 22), Vector2(20, 44), Vector2(-4, 44)
+	]), TERRACOTTA)
+	canvas.draw_rect(Rect2(-10, 20, 36, 7), TERRACOTTA_DARK)
+	# Goccia di condensa dal tetto.
+	_drop(canvas, Vector2(34, 6), 6.0)
+
+
 ## Livello bloccato.
 static func _lock(canvas: CanvasItem) -> void:
 	canvas.draw_arc(Vector2(0, -12), 22.0, PI, TAU, 24, LOCK, 9.0)
@@ -222,6 +261,15 @@ static func _crate(canvas: CanvasItem, rect: Rect2) -> void:
 		var y := rect.position.y + plank * i
 		canvas.draw_line(Vector2(rect.position.x, y), Vector2(rect.end.x, y), LevelKit.WOOD_DARK, 3.0)
 	canvas.draw_rect(rect.grow(-3.0), LevelKit.WOOD_DARK, false, 6.0)
+
+
+## Foglia a goccia che parte da "at" lungo la direzione "angle".
+static func _leaf(canvas: CanvasItem, at: Vector2, angle: float, length: float) -> void:
+	var dir := Vector2.from_angle(angle)
+	var side := dir.orthogonal() * length * 0.32
+	var mid := at + dir * length * 0.5
+	canvas.draw_colored_polygon(PackedVector2Array([at, mid + side, at + dir * length, mid - side]), LEAF)
+	canvas.draw_line(at, at + dir * length * 0.85, LEAF_VEIN, 1.5)
 
 
 static func _drop(canvas: CanvasItem, at: Vector2, r: float) -> void:

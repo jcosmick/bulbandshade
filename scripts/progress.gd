@@ -9,6 +9,7 @@ const LEVELS: Array[String] = [
 	"res://levels/level_05.tscn",
 	"res://levels/level_06.tscn",
 	"res://levels/level_07.tscn",
+	"res://levels/level_08.tscn",
 ]
 const SAVE_PATH := "user://progress.cfg"
 ## Indice del tutorial: non è in LEVELS, quindi non compare nella lista dei
