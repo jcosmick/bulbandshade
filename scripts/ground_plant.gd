@@ -2,7 +2,7 @@
 class_name GroundPlant
 extends Node2D
 ## Pianta da serra, solo decorativa: niente collisioni né ombre. Le foglie
-## ondeggiano piano e ognuna si piega quando la lampadina la tocca; toccando
+## stanno ferme e ognuna si piega quando la lampadina la tocca; toccando
 ## i fusti si muove tutta la chioma che ci sta sopra.
 ## L'origine è la base al centro: appoggiata va a y = pavimento.
 
@@ -54,9 +54,8 @@ const DAMPING := 8.0
 ## Quanto la velocità orizzontale della lampadina piega la parte che tocca.
 const PUSH := 0.007
 const MAX_BEND := 0.12
-## Ondeggiamento a riposo, come per un filo d'aria.
-const IDLE_SPEED := 1.3
-const IDLE_AMOUNT := 0.015
+## Sotto questa piegatura (e velocità) la parte è ferma: si smette di ridisegnare.
+const REST := 0.0005
 
 ## Capsula della lampadina (vedi player.gd): raggio e metà del tratto dritto.
 const PLAYER_RADIUS := 30.0
@@ -70,9 +69,10 @@ var _part_velocity := PackedFloat32Array()
 var _part_points: Array[PackedVector2Array] = []
 var _part_reach := PackedFloat32Array()
 var _part_count := 0
-var _time := 0.0
+var _resting := true
 var _area: Area2D
 var _rng := RandomNumberGenerator.new()
+var _rustle: PlantRustle
 
 
 func _ready() -> void:
@@ -91,6 +91,9 @@ func _ready() -> void:
 	collision.position = Vector2(0, -height / 2.0)
 	_area.add_child(collision)
 	add_child(_area)
+	if kind != "cactus":
+		_rustle = PlantRustle.new()
+		add_child(_rustle)
 	var reach := maxf(height, pot_width) * 0.75
 	LevelKit.process_on_screen(self, Rect2(-reach, -height * 1.15, reach * 2.0, height * 1.15))
 
@@ -98,21 +101,37 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint() or kind == "cactus":
 		return
-	_time += delta
-	var count := _part_points.size()
-	_part_bend.resize(count)
-	_part_velocity.resize(count)
 	var players: Array[Player] = []
 	for body in _area.get_overlapping_bodies():
 		if body is Player:
 			players.append(body)
+	# Ferma e senza lampadina vicino: niente da muovere né da ridisegnare.
+	if _resting and players.is_empty():
+		return
+	var count := _part_points.size()
+	_part_bend.resize(count)
+	_part_velocity.resize(count)
+	var moving := false
+	var rustle_speed := 0.0
 	for i in count:
 		var force := -STIFFNESS * _part_bend[i] - DAMPING * _part_velocity[i]
 		for player in players:
 			if _touches(i, to_local(player.global_position)):
 				force += player.velocity.x * PUSH
+				rustle_speed = maxf(rustle_speed, absf(player.velocity.x))
 		_part_velocity[i] += force * delta
 		_part_bend[i] = clampf(_part_bend[i] + _part_velocity[i] * delta, -MAX_BEND, MAX_BEND)
+		if absf(_part_bend[i]) > REST or absf(_part_velocity[i]) > REST:
+			moving = true
+	if rustle_speed > 0.0:
+		_rustle.touch(rustle_speed)
+	var was_resting := _resting
+	_resting = not moving
+	if _resting:
+		if was_resting:
+			return
+		_part_bend.fill(0.0)
+		_part_velocity.fill(0.0)
 	queue_redraw()
 
 
@@ -127,10 +146,11 @@ func _touches(i: int, center: Vector2) -> bool:
 	return false
 
 
-## Comincia una nuova parte che si muove da sola e ne restituisce la rotazione:
-## piegatura propria più un'oscillazione a riposo (`phase`). `flex` dice
-## quanto quella parte è flessibile.
-func _sway(phase: float, flex: float) -> float:
+## Comincia una nuova parte che si muove da sola e ne restituisce la rotazione
+## (la sua piegatura). `flex` dice quanto quella parte è flessibile. `_phase`
+## non serve più (era l'ondeggiamento a riposo) ma chi chiama continua a
+## estrarlo da _rng, così le piante esistenti non cambiano forma.
+func _sway(_phase: float, flex: float) -> float:
 	var i := _part_count
 	_part_count += 1
 	if _part_points.size() <= i:
@@ -138,7 +158,7 @@ func _sway(phase: float, flex: float) -> float:
 		_part_reach.append(0.0)
 	_part_points[i] = PackedVector2Array()
 	var bend := _part_bend[i] if i < _part_bend.size() else 0.0
-	return (bend + sin(_time * IDLE_SPEED + phase) * IDLE_AMOUNT) * flex
+	return bend * flex
 
 
 ## Punti dell'ultima parte cominciata in cui la lampadina la tocca, se ci

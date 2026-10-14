@@ -9,6 +9,8 @@ const TERRAIN_EDGE := Color(0.42, 0.39, 0.46)
 const LIGHT_COLOR := Color(1.0, 0.86, 0.6)
 ## Raggio (px) della texture della luce a texture_scale = 1.
 const LIGHT_TEXTURE_RADIUS := 128.0
+## Le luci create qui si spengono da sole quando la loro energia è 0.
+const AutoLight := preload("res://scripts/auto_light.gd")
 
 static var _light_texture: Texture2D
 
@@ -56,10 +58,11 @@ static func light_texture() -> Texture2D:
 
 
 static func make_light(parent: Node, radius: float, energy: float, shadows: bool) -> PointLight2D:
-	var light := PointLight2D.new()
+	var light: PointLight2D = AutoLight.new()
 	light.texture = light_texture()
 	light.texture_scale = radius / LIGHT_TEXTURE_RADIUS
 	light.energy = energy
+	light.enabled = energy > 0.0
 	light.color = LIGHT_COLOR
 	light.shadow_enabled = shadows
 	light.shadow_filter = Light2D.SHADOW_FILTER_PCF5
@@ -129,3 +132,14 @@ static func draw_terrain(item: CanvasItem, size: Vector2) -> void:
 	var rect := Rect2(-size / 2.0, size)
 	item.draw_rect(rect, TERRAIN)
 	item.draw_rect(Rect2(rect.position, Vector2(size.x, minf(6.0, size.y))), TERRAIN_EDGE)
+
+
+## La lampadina del livello che contiene `node` (null fuori da un livello).
+## Va chiamata in _ready o dopo, quando il livello è già nell'albero.
+static func find_player(node: Node) -> Player:
+	var parent := node.get_parent()
+	while parent != null and not parent is Level:
+		parent = parent.get_parent()
+	if parent == null:
+		return null
+	return parent.get_node_or_null("Player") as Player

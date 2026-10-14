@@ -1,8 +1,14 @@
 extends Node
-## Musica di sottofondo (autoload): la canzoncina in loop su tutte le scene.
-## Il WAV si rigenera con tools/make_sfx.py.
+## Musica di sottofondo (autoload): una canzone in loop, che continua tra una
+## scena e l'altra. Ogni livello sceglie la sua (Level.music); il menu torna
+## sempre a "main". I WAV si rigenerano con tools/make_sfx.py.
 
-const SONG := preload("res://sounds/music.wav")
+const SONGS := {
+	"main": preload("res://sounds/music.wav"),
+	"dark": preload("res://sounds/music_dark.wav"),
+}
+## Secondi di dissolvenza incrociata quando si cambia canzone.
+const CROSSFADE := 1.5
 const VOLUME_DB := -20.0
 ## Di quanto si abbassa la musica mentre suona un jingle (es. la vittoria).
 const DUCK_DB := -18.0
@@ -16,6 +22,7 @@ const FLASH_DUCK_HOLD := 0.15
 const FLASH_DUCK_RELEASE := 0.5
 
 var _player: AudioStreamPlayer
+var _song := "main"
 ## EQ sul bus Music, separato dal volume del player (jingle) e del bus (impostazioni).
 var _flash_eq := AudioEffectEQ6.new()
 var _flash_tween: Tween
@@ -23,13 +30,35 @@ var _flash_tween: Tween
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_player = AudioStreamPlayer.new()
-	_player.stream = SONG
-	_player.bus = &"Music"
-	_player.volume_db = VOLUME_DB
-	add_child(_player)
+	_player = _make_player(_song)
 	_player.play()
 	AudioServer.add_bus_effect(AudioServer.get_bus_index(_player.bus), _flash_eq)
+
+
+## Passa alla canzone `song` (chiave di SONGS) con una dissolvenza incrociata.
+## Se sta già suonando non fa niente: la canzone continua da dov'era.
+func play_song(song: String) -> void:
+	if song == _song or not SONGS.has(song):
+		return
+	_song = song
+	var old := _player
+	var fade_out := old.create_tween()
+	fade_out.tween_property(old, "volume_db", -60.0, CROSSFADE)
+	fade_out.tween_callback(old.queue_free)
+	_player = _make_player(song)
+	_player.volume_db = -60.0
+	_player.play()
+	var fade_in := _player.create_tween()
+	fade_in.tween_property(_player, "volume_db", VOLUME_DB, CROSSFADE) 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+func _make_player(song: String) -> AudioStreamPlayer:
+	var player := AudioStreamPlayer.new()
+	player.stream = SONGS[song]
+	player.bus = &"Music"
+	player.volume_db = VOLUME_DB
+	add_child(player)
+	return player
 
 
 ## Abbassa la musica per qualche secondo, poi la riporta su piano piano.

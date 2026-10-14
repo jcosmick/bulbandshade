@@ -33,6 +33,7 @@ var _time := 0.0
 
 
 func _ready() -> void:
+	Music.play_song("main")
 	set_anchors_preset(PRESET_FULL_RECT)
 	theme = UiStyle.button_theme()
 

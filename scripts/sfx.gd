@@ -46,6 +46,19 @@ const ROUND_ROBIN := {
 		preload("res://sounds/glass_2.wav"),
 		preload("res://sounds/glass_3.wav"),
 	],
+	"rustle": [
+		preload("res://sounds/rustle_1.wav"),
+		preload("res://sounds/rustle_2.wav"),
+		preload("res://sounds/rustle_3.wav"),
+		preload("res://sounds/rustle_4.wav"),
+		preload("res://sounds/rustle_5.wav"),
+		preload("res://sounds/rustle_6.wav"),
+	],
+	"spark": [
+		preload("res://sounds/spark_1.wav"),
+		preload("res://sounds/spark_2.wav"),
+		preload("res://sounds/spark_3.wav"),
+	],
 }
 ## Pulsanti touch di gioco che hanno già un suono proprio (o nessuno).
 const SILENT_ACTIONS := [&"jump", &"flash"]

@@ -84,6 +84,7 @@ func load_level(index: int) -> void:
 	var path := Progress.test_level if Progress.test_level else Progress.level_path(index)
 	level = load(path).instantiate()
 	add_child(level)
+	Music.play_song(level.music)
 	player = level.get_node("Player")
 	_focus_y = player.global_position.y
 	goal = level.get_node("Goal")

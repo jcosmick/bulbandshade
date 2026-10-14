@@ -101,6 +101,8 @@ const BAKE_SCALE := {
 }
 ## Lato massimo di una texture (limite sicuro sui telefoni).
 const MAX_TEXTURE := 4096.0
+## Magazzino: px di fondo lasciati sotto i bordi della parete in texture.
+const EDGE_OVERLAP := 8.0
 ## Strati, dal più lontano: il fondo (questo nodo), la parete in parallasse
 ## del magazzino, il piano lontano, quello vicino, il velo smerigliato della
 ## serra e il primo piano fisso. Il primo piano della serra (telaio e mattoni)
@@ -176,6 +178,8 @@ func _bake() -> void:
 		var layer := _layer(which)
 		layer.material = premultiplied
 		layer.queue_redraw()
+	# Magazzino: ora che la parete è in texture il fondo disegna solo i bordi.
+	queue_redraw()
 
 
 func _layer(which: int) -> CanvasItem:
@@ -202,6 +206,8 @@ func _process(_delta: float) -> void:
 	# dal pavimento.
 	var screen_center := get_viewport().get_canvas_transform().affine_inverse() * (get_viewport_rect().size / 2.0)
 	var shift := to_local(screen_center).x - rect.get_center().x
+	if style == "warehouse" and _back.position.x != shift * PARALLAX_WALL:
+		queue_redraw()
 	_back.position.x = shift * PARALLAX_WALL
 	_far.position.x = shift * PARALLAX_FAR
 	_near.position.x = shift * PARALLAX_NEAR
@@ -222,11 +228,17 @@ func _draw_layer(which: int, canvas: CanvasItem) -> void:
 		_paint(which, canvas)
 
 
+## Ogni pixel si colora una volta sola: la parete va solo tra le strisce e
+## sopra la zoccolatura (sui telefoni ogni strato a tutto schermo costa).
 func _draw_room() -> void:
-	draw_rect(rect, WALL)
+	if wainscot_y <= rect.position.y or wainscot_y >= rect.end.y:
+		draw_rect(rect, WALL)
 	var x := rect.position.x
 	while x < rect.end.x:
 		draw_rect(Rect2(x, rect.position.y, STRIPE_STEP / 2.0, wainscot_y - rect.position.y), STRIPE)
+		var wall_x := x + STRIPE_STEP / 2.0
+		if wall_x < rect.end.x and wainscot_y > rect.position.y:
+			draw_rect(Rect2(wall_x, rect.position.y, minf(STRIPE_STEP / 2.0, rect.end.x - wall_x), minf(wainscot_y, rect.end.y) - rect.position.y), WALL)
 		x += STRIPE_STEP
 	draw_rect(Rect2(rect.position.x, wainscot_y, rect.size.x, rect.end.y - wainscot_y), PANEL)
 	draw_rect(Rect2(rect.position.x, wainscot_y - 6.0, rect.size.x, 12.0), MOLDING)
@@ -243,10 +255,28 @@ func _paint(which: int, canvas: CanvasItem) -> void:
 	elif style == "warehouse":
 		match which:
 			# Riempie i bordi che la parete in parallasse lascia scoperti.
-			BASE: canvas.draw_rect(rect, SHEET)
+			BASE: _draw_sheet_gap(canvas)
 			BACK: _draw_sheet_wall(canvas)
 			FAR, NEAR: _draw_racks(canvas, which == NEAR)
 			FRONT: _draw_pillars(canvas)
+
+
+## Fondo del magazzino: la parete in parallasse (opaca) lo copre tutto tranne
+## la striscia che lascia scoperta scorrendo; quando è già in texture si
+## disegna solo quella (sui telefoni ogni strato a tutto schermo costa).
+func _draw_sheet_gap(canvas: CanvasItem) -> void:
+	if not _baked.has(BACK):
+		canvas.draw_rect(rect, SHEET)
+		return
+	# Una striscia per lato, con qualche px sotto la parete: i bordi della
+	# texture (a mezza risoluzione) possono essere semitrasparenti.
+	var offset := _back.position.x
+	var left := minf(maxf(offset, 0.0) + EDGE_OVERLAP, rect.size.x)
+	var right := minf(maxf(-offset, 0.0) + EDGE_OVERLAP, rect.size.x)
+	canvas.draw_rect(Rect2(rect.position.x, rect.position.y, left, rect.size.y), SHEET)
+	canvas.draw_rect(Rect2(rect.end.x - right, rect.position.y, right, rect.size.y), SHEET)
+	canvas.draw_rect(Rect2(rect.position.x, rect.position.y, rect.size.x, EDGE_OVERLAP), SHEET)
+	canvas.draw_rect(Rect2(rect.position.x, rect.end.y - EDGE_OVERLAP, rect.size.x, EDGE_OVERLAP), SHEET)
 
 
 ## Lastre di vetro: sfumatura verticale continua, con piccole differenze tra
