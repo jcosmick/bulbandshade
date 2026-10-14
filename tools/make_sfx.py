@@ -1,7 +1,7 @@
 """Sintetizza gli effetti sonori del gioco come WAV mono 16 bit.
 
 Uso: python tools/make_sfx.py sounds [nome ...]
-Senza nomi rigenera tutti gli effetti (la musica solo se richiesta: "music", "music_dark").
+Senza nomi rigenera tutti gli effetti (la musica solo se richiesta: "music", "music_dark", "music_greenhouse").
 Con "varianti" scrive in sounds/varianti le alternative di flash e vittoria.
 
 Palette sonora: la protagonista è una lampadina, quindi vetro (campanelli FM
@@ -1391,6 +1391,355 @@ def music_dark():
     print("music_dark.wav", f"{length / rate:.2f}s", f"picco {np.max(np.abs(mix)):.2f}")
 
 
+def music_greenhouse():
+    """Tema della serra: loop di 32 battute (~101 s) in Fa maggiore, acustico e umido.
+
+    Stessa tonalità della musica principale (flash, vittoria e checkpoint in tono), con
+    colori "lidi" (Sib maj7#11) che la fanno galleggiare come aria calda. Niente
+    campanelli: qui suonano legno, corde e fiato, come in una serra piena di piante.
+    A  "rugiada": il pianoforte col feltro spezza gli accordi piano, il clarinetto canta basso e caldo,
+       le foglie frusciano (shaker). A metà entra il contrabbasso.
+    B  "il lucernario si apre": l'aria si gonfia, il coro si apre, entra il flauto
+       con spazzole, cassa morbida e conga.
+    A' la rugiada torna, un corno lontano risponde sotto il clarinetto.
+    C  "crescita": il flauto sale come un rampicante fino al Fa6 con il clarinetto
+       un'ottava sotto e il corno che sale di grado, poi tutto ricade nel loop.
+    """
+    rate = 32000
+    bpm = 76
+    beat = 60 / bpm
+    bars = 32
+    length = int(round(rate * beat * 4 * bars))
+    tail = int(rate * 4)
+    dry = np.zeros(length + tail)
+    send = np.zeros(length + tail)
+    loop_sec = length / rate
+    mrng = np.random.default_rng(808)
+
+    def hz(m):
+        return 440 * 2 ** ((m - 69) / 12)
+
+    def ts(sec):
+        return np.arange(int(rate * sec)) / rate
+
+    def damp(t, beats, release):
+        off = beats * beat
+        return np.where(t < off, 1.0, np.exp(-(t - off) / release))
+
+    def put(x, at_beat, gain, verb=0.3, humanize=0.005):
+        # Crome in levare appena in ritardo: un dondolio pigro, da pomeriggio caldo.
+        whole = np.floor(at_beat + 1e-9)
+        frac = at_beat - whole
+        if abs(frac - 0.5) < 1e-6:
+            frac = 0.53
+        i = max(0, int(rate * ((whole + frac) * beat + mrng.uniform(-humanize, humanize))))
+        m = min(len(x), len(dry) - i)
+        dry[i:i + m] += x[:m] * gain
+        send[i:i + m] += x[:m] * gain * verb
+
+    def spectral(x, lo=None, hi=None):
+        f = np.fft.rfftfreq(len(x), 1 / rate)
+        g = np.ones(len(f))
+        if hi:
+            g /= np.sqrt(1 + (f / hi) ** 4)
+        if lo:
+            g /= np.sqrt(1 + (lo / np.maximum(f, 1e-3)) ** 4)
+        return np.fft.irfft(np.fft.rfft(x) * g, len(x))
+
+    # --- Strumenti -----------------------------------------------------------------
+    def piano(m, dur=3.0):
+        """Pianoforte "felt" (martelletti col feltro): due corde un filo stonate, parziali
+        appena stirati che si spengono prima in alto, colpo sordo del martelletto."""
+        f = hz(m)
+        t = ts(dur)
+        x = np.zeros(len(t))
+        decay = 2.2 * (261.6 / f) ** 0.5
+        for k in range(1, 9):
+            fk = f * k * np.sqrt(1 + 0.0003 * k * k)
+            amp = 1 / k ** 1.6
+            for det in (0.9993, 1.0007):
+                x += amp * np.sin(2 * np.pi * fk * det * t + mrng.uniform(0, 6)) * np.exp(-t * k / decay)
+        x += 0.25 * spectral(mrng.standard_normal(len(t)), lo=80, hi=600) * np.exp(-t / 0.02)
+        return spectral(x * np.clip(t / 0.004, 0, 1), hi=1800)
+
+    def clarinet(m, beats):
+        """Clarinetto: armoniche dispari, legno e fiato. Canta nella rugiada."""
+        f = hz(m)
+        dur = beats * beat
+        t = ts(dur + 0.4)
+        vib = 1 + 0.004 * np.sin(2 * np.pi * 4.8 * t) * np.clip((t - 0.3) / 0.3, 0, 1)
+        ph = 2 * np.pi * np.cumsum(f * vib) / rate
+        x = np.sin(ph) + 0.08 * np.sin(2 * ph) + 0.4 * np.sin(3 * ph) + 0.2 * np.sin(5 * ph)
+        x += 0.1 * np.sin(7 * ph)
+        x += 0.05 * spectral(mrng.standard_normal(len(t)), lo=f, hi=f * 4)
+        amp = np.clip(t / 0.06, 0, 1) * (0.9 + 0.1 * np.sin(np.pi * np.clip(t / max(dur, 0.1), 0, 1)))
+        amp *= np.where(t < dur, 1.0, np.exp(-(t - dur) / 0.09))
+        return spectral(x * amp, hi=2800)
+
+    def flute(m, beats):
+        """Flauto con il fiato: l'aria che passa tra le foglie quando entra la luce."""
+        f = hz(m)
+        dur = beats * beat
+        t = ts(dur + 0.4)
+        vib = 1 + 0.005 * np.sin(2 * np.pi * 5.0 * t) * np.clip((t - 0.25) / 0.3, 0, 1)
+        ph = 2 * np.pi * np.cumsum(f * vib) / rate
+        x = np.sin(ph) + 0.3 * np.sin(2 * ph) + 0.1 * np.sin(3 * ph) + 0.04 * np.sin(4 * ph)
+        x += 0.12 * spectral(mrng.standard_normal(len(t)), lo=f * 0.9, hi=f * 3)
+        amp = np.clip(t / 0.07, 0, 1) * (0.85 + 0.15 * np.clip(t / max(dur, 0.1), 0, 1))
+        amp *= np.where(t < dur, 1.0, np.exp(-(t - dur) / 0.1))
+        return x * amp
+
+    def horn(m, beats):
+        """Corno lontano, ovattato: dente di sega chiuso dal filtro, si apre appena col fiato."""
+        f = hz(m)
+        dur = beats * beat
+        t = ts(dur + 0.6)
+        vib = 1 + 0.003 * np.sin(2 * np.pi * 4.8 * t + mrng.uniform(0, 6)) * np.clip((t - 0.3) / 0.4, 0, 1)
+        ph = 2 * np.pi * np.cumsum(f * vib) / rate
+        x = sum(np.sin(k * ph) / k for k in range(1, int(4000 / f)))
+        amp = np.clip(t / 0.12, 0, 1) * np.where(t < dur, 1.0, np.exp(-(t - dur) / 0.25))
+        cutoff = 350 + 450 * amp * (0.8 + 0.2 * np.sin(np.pi * np.clip(t / max(dur, 0.1), 0, 1)))
+        return svf_lowpass(x * amp, cutoff * RATE / rate, 0.7)
+
+    def choir(notes, beats):
+        """Coro lontano che canta "uuh": armoniche pesate dalle formanti della U (300 e
+        800 Hz), voci un filo stonate con vibrato lento. L'umidità calda della serra."""
+        t = ts(beats * beat + 1.2)
+        x = np.zeros(len(t))
+        for m in notes:
+            for det in (0.996, 1.0, 1.004):
+                f = hz(m) * det
+                vib = 1 + 0.004 * np.sin(2 * np.pi * mrng.uniform(4.5, 5.5) * t + mrng.uniform(0, 6))
+                ph = 2 * np.pi * np.cumsum(f * vib) / rate
+                for k in range(1, int(2500 / f) + 1):
+                    fk = f * k
+                    amp = np.exp(-((fk - 300) / 160) ** 2) + 0.35 * np.exp(-((fk - 800) / 220) ** 2) + 0.05
+                    x += amp * np.sin(k * ph)
+        x += 0.02 * spectral(mrng.standard_normal(len(t)), lo=300, hi=2500)
+        return spectral(x * np.clip(t / 1.0, 0, 1) * damp(t, beats, 0.7), hi=2000)
+
+    def bass(m, beats):
+        """Contrabbasso pizzicato, tondo e senza spigoli."""
+        f = hz(m)
+        t = ts(beats * beat + 0.3)
+        x = np.sin(2 * np.pi * f * t)
+        x += 0.45 * np.sin(2 * np.pi * 2 * f * t) * np.exp(-t / 0.25)
+        x += 0.15 * np.sin(2 * np.pi * 3 * f * t) * np.exp(-t / 0.08)
+        x *= np.exp(-t / 1.3) * damp(t, beats, 0.06) * np.clip(t / 0.008, 0, 1)
+        return np.tanh(1.3 * x)
+
+    def conga(f0, slap=False):
+        """Conga suonata con la mano: pelle tesa, tonda; lo slap è più secco."""
+        t = ts(0.4)
+        fr = f0 * (1 + 0.15 * np.exp(-t / 0.015))
+        x = np.sin(2 * np.pi * np.cumsum(fr) / rate) * np.exp(-t / (0.06 if slap else 0.14))
+        x += (0.6 if slap else 0.25) * spectral(mrng.standard_normal(len(t)), lo=600, hi=3000) * np.exp(-t / 0.01)
+        return x * np.clip(t / 0.001, 0, 1)
+
+    def soft_kick():
+        t = ts(0.4)
+        f = 50 + 45 * np.exp(-t / 0.025)
+        x = np.sin(2 * np.pi * np.cumsum(f) / rate) * np.exp(-t / 0.18)
+        return spectral(x * np.clip(t / 0.003, 0, 1), hi=400)
+
+    brush_noise = spectral(mrng.standard_normal(int(rate * 0.5)), lo=1500, hi=6000)
+
+    def brush(long=False):
+        """Spazzola sul rullante: "tsh" che striscia, più lungo sui battiti 2 e 4."""
+        t = ts(0.5)
+        a = 0.03 if long else 0.01
+        x = brush_noise * np.clip(t / a, 0, 1) * np.exp(-t / (0.16 if long else 0.05))
+        return x / 3
+
+    leaf_noise = spectral(mrng.standard_normal(int(rate * 0.2)), lo=1800, hi=5500)
+
+    def shaker(dur=0.05):
+        """Foglie secche scosse (parenti di rustle.wav): soffio corto, scuro."""
+        t = ts(0.2)
+        return leaf_noise * np.clip(t / 0.008, 0, 1) * np.exp(-t / dur) / 3
+
+    def plop():
+        """Goccia grossa che cade nella vasca: "plop" grave e ovattato, senza suono di campana."""
+        t = ts(0.3)
+        fr = 140 * 2 ** (1.2 * (1 - np.exp(-t / 0.02)))
+        x = np.sin(2 * np.pi * np.cumsum(fr) / rate) * np.exp(-t / 0.05)
+        return spectral(x * np.clip(t / 0.003, 0, 1), hi=900)
+
+    def gust(dur):
+        """Aria tiepida dalle bocchette che si gonfia verso la luce."""
+        n = int(rate * dur)
+        t = np.arange(n) / rate
+        x = spectral(mrng.standard_normal(n), lo=300, hi=1500)
+        return x * np.sin(np.pi * t / dur) ** 2
+
+    # --- Fondo continuo: aria umida della serra che respira piano (richiusa nel loop) ---
+    t = np.arange(length) / rate
+    air = spectral(mrng.standard_normal(length), lo=200, hi=900)
+    air *= 0.6 + 0.4 * np.sin(2 * np.pi * 4 * t / loop_sec) * np.sin(2 * np.pi * 7 * t / loop_sec + 1)
+    dry[:length] += air * 0.012
+
+    # --- Armonia (basso, voci) -----------------------------------------------------
+    Fmaj9 = (41, (57, 60, 64, 67))
+    F_A = (45, (53, 57, 60, 64))
+    Bb_lyd = (46, (53, 57, 62, 64))  # Sib maj7#11: il Mi della scala che "galleggia"
+    Bbmaj9 = (46, (53, 57, 60, 62))
+    Dm9 = (38, (53, 57, 60, 64))
+    Am7 = (45, (52, 55, 57, 60))
+    Gm9 = (43, (50, 53, 57, 58))
+    Gm7 = (43, (50, 53, 55, 58))
+    C6 = (48, (52, 55, 57, 60))
+    Csus = (48, (53, 55, 60, 65))
+    C = (48, (52, 55, 60, 64))
+    A_ch = [Fmaj9, Fmaj9, Bb_lyd, Bb_lyd, Dm9, Am7, Gm9, (Csus, C)]
+    B_ch = [Bbmaj9, C6, Am7, Dm9, Gm9, F_A, Bb_lyd, (Csus, C)]
+    C_ch = [Gm7, F_A, Bbmaj9, C6, Dm9, Bb_lyd, Gm9, (Csus, C)]
+    chords = A_ch + B_ch + A_ch + C_ch
+
+    # --- Melodie (beat, nota, durata) ---------------------------------------------------
+    # Rugiada: clarinetto nel registro medio, frasi lunghe che respirano.
+    mel_A = [
+        [(0, 69, 1.5), (1.5, 72, .5), (2, 76, 2)],
+        [(0, 74, 1), (1, 72, 1), (2, 67, 2)],
+        [(0, 69, 1.5), (1.5, 72, .5), (2, 77, 1.5), (3.5, 76, .5)],
+        [(0, 74, 3), (3, 72, 1)],
+        [(0, 69, 1), (1, 72, 1), (2, 76, 1.5), (3.5, 77, .5)],
+        [(0, 79, 1.5), (1.5, 76, .5), (2, 72, 2)],
+        [(0, 74, 1), (1, 77, 1), (2, 76, 1), (3, 74, 1)],
+        [(0, 72, 2), (2, 72, 1), (3, 67, 1)],
+    ]
+    # Luce: il flauto si apre in alto.
+    mel_B = [
+        [(0, 81, 1.5), (1.5, 82, .5), (2, 86, 2)],
+        [(0, 84, 1.5), (1.5, 81, .5), (2, 79, 1), (3, 81, 1)],
+        [(0, 84, 1), (1, 88, 1), (2, 86, 1), (3, 84, 1)],
+        [(0, 81, 3), (3, 77, 1)],
+        [(0, 79, 1), (1, 82, 1), (2, 86, 1.5), (3.5, 84, .5)],
+        [(0, 84, 2), (2, 81, 1), (3, 77, 1)],
+        [(0, 79, 1), (1, 81, .5), (1.5, 84, .5), (2, 88, 2)],
+        [(0, 86, 2), (2, 84, 2)],
+    ]
+    # Crescita: lo slancio si ripete sempre più in alto, come un rampicante.
+    mel_C = [
+        [(0, 74, .5), (.5, 77, .5), (1, 79, 1), (2, 82, 2)],
+        [(0, 76, .5), (.5, 77, .5), (1, 81, 1), (2, 84, 2)],
+        [(0, 77, .5), (.5, 81, .5), (1, 84, 1), (2, 86, 2)],
+        [(0, 79, .5), (.5, 84, .5), (1, 86, 1), (2, 88, 1), (3, 91, 1)],
+        [(0, 89, 2), (2, 88, 1), (3, 86, 1)],
+        [(0, 84, 1.5), (1.5, 81, .5), (2, 88, 2)],
+        [(0, 86, 1), (1, 82, 1), (2, 81, 1), (3, 77, 1)],
+        [(0, 79, 2), (2, 76, 2)],
+    ]
+    melody = mel_A + mel_B + mel_A + mel_C
+    # Corno: risponde sotto il clarinetto nella ripresa, sale di grado nella crescita.
+    horn_A = [[(0, 57, 4)], [(0, 55, 2), (2, 52, 2)], [(0, 53, 4)], [(0, 50, 2), (2, 52, 2)],
+               [(0, 53, 2), (2, 57, 2)], [(0, 55, 2), (2, 52, 2)], [(0, 50, 2), (2, 53, 2)],
+               [(0, 53, 2), (2, 52, 2)]]
+    horn_C = [[(0, 50, 4)], [(0, 48, 4)], [(0, 50, 4)], [(0, 52, 4)],
+               [(0, 53, 4)], [(0, 52, 4)], [(0, 50, 4)], [(0, 48, 2), (2, 52, 2)]]
+
+    # Pianoforte: accordo spezzato lento, una nota per battito: (beat, nota) dove 0 = basso,
+    # 1 = quinta del basso, 2.. = voci dell'accordo dal basso in alto. Nella luce e
+    # nella crescita si aggiunge una croma in levare.
+    broken = ((0, 0), (1, 3), (2, 5), (3, 4))
+    broken_lit = broken + ((2.5, 3),)
+    piano_cache = {}
+
+    def keys(m):
+        if m not in piano_cache:
+            piano_cache[m] = piano(m)
+        return piano_cache[m]
+
+    # --- Arrangiamento ---------------------------------------------------------------
+    for bar in range(bars):
+        start = bar * 4
+        sec = bar // 8  # 0 = A, 1 = B, 2 = A', 3 = C
+        halves = chords[bar] if isinstance(chords[bar][0], tuple) else (chords[bar],)
+        span = 4 / len(halves)
+        for h, (root, voices) in enumerate(halves):
+            at = start + h * span
+            put(choir(voices, span), at, 0.012 if sec in (0, 2) else 0.017, verb=0.7)
+            p_root = root + 12 if root < 40 else root
+            notes = (p_root, p_root + 7, *voices)
+            for b, s in (broken_lit if sec in (1, 3) else broken):
+                if h * span <= b < (h + 1) * span and not (bar == 31 and b >= 3):
+                    gain = (0.11 if s < 2 else 0.075) * mrng.uniform(0.85, 1.05)
+                    put(keys(notes[min(s, len(notes) - 1)]), start + b, gain, verb=0.45)
+            # Basso: entra a metà della rugiada, poi cammina nella luce e nella crescita.
+            if bar >= 4:
+                octave = root + 12 if root < 44 else root - 12
+                if sec in (1, 3) and bar != 31:
+                    pattern = ((0, root, 1.5), (1.5, root + 7, .5), (2, octave, 1), (3, root + 7, 1))
+                else:
+                    pattern = ((0, root, span - 0.5), (span - 0.5, root + 7, .5))
+                for b, m, d in pattern:
+                    if b < span:
+                        put(bass(m, d), at + b, 0.15 if b == 0 else 0.1, verb=0.1)
+
+        # Melodia: clarinetto nella rugiada, flauto nella luce, tutti e due nella crescita.
+        for b, m, d in melody[bar]:
+            if sec in (0, 2):
+                put(clarinet(m, d), start + b, 0.08, verb=0.4)
+            else:
+                put(flute(m, d), start + b, 0.07, verb=0.45)
+                if sec == 3:
+                    put(clarinet(m - 12, d), start + b, 0.035, verb=0.4)
+        if sec in (2, 3):
+            for b, m, d in (horn_A if sec == 2 else horn_C)[bar % 8]:
+                put(horn(m, d), start + b, 0.06, verb=0.5)
+
+        # Ritmo: foglie nella rugiada; spazzole, cassa morbida e conga nella luce.
+        if sec in (1, 3):
+            last = bar == 31
+            for b in (0, 2.5):
+                if not (last and b > 0):
+                    put(soft_kick(), start + b, 0.2, verb=0.05, humanize=0)
+            for k in range(8):
+                if not (last and k >= 6):
+                    long = k in (2, 6)
+                    put(brush(long), start + k * 0.5, (0.07 if long else 0.03) * mrng.uniform(0.8, 1.1),
+                        verb=0.25)
+            for b, f0, slap in ((1.5, 196, False), (1.75, 196, False), (3, 262, True), (3.5, 196, False)):
+                if not (last and b > 2):
+                    put(conga(f0, slap), start + b, 0.06 if slap else 0.05, verb=0.3)
+        elif bar >= 2:
+            for k in range(8):
+                put(shaker(0.06 if k % 2 else 0.03), start + k * 0.5,
+                    (0.045 if k % 2 else 0.025) * mrng.uniform(0.8, 1.1), verb=0.25)
+            if sec == 2 and bar % 2:
+                put(conga(196), start + 3.5, 0.04, verb=0.3)
+        if bar % 8 == 3:
+            put(plop(), start + 3.5, 0.06, verb=0.5)
+
+    # Racconto: l'aria della serra si gonfia prima che il lucernario si apra.
+    put(gust(3 * beat), 7 * 4 + 1, 0.05, verb=0.6, humanize=0)
+    put(gust(3 * beat), 23 * 4 + 1, 0.04, verb=0.6, humanize=0)
+
+    # --- Mix (come music(): loop senza stacchi e stessa intensità media) ---------------
+    def fold(x):
+        y = x[:length].copy()
+        y[:tail] += x[length:]
+        return y
+
+    dry, send = fold(dry), fold(send)
+    # Serra di vetro: riverbero un po' più lungo e più chiaro della stanza della fabbrica.
+    ir_t = ts(2.6)
+    ir = np.random.default_rng(42).standard_normal(len(ir_t)) * np.exp(-6.9 * ir_t / 2.6)
+    ir = spectral(np.concatenate([ir, np.zeros(len(ir))]), lo=180, hi=5000)[:len(ir_t)]
+    ir *= np.clip(ir_t / 0.02, 0, 1)
+    ir = np.concatenate([np.zeros(int(rate * 0.025)), ir]) / np.sqrt(np.sum(ir ** 2))
+    wet = np.fft.irfft(np.fft.rfft(send) * np.fft.rfft(ir, length), length)
+    mix = spectral(dry + wet * 0.55, lo=35, hi=9000)
+    mix = np.tanh(mix / np.max(np.abs(mix)) * 1.6)
+    mix *= 10 ** (-18.3 / 20) / np.sqrt(np.mean(mix ** 2))
+    data = (np.clip(mix, -1, 1) * 32767).astype("<i2").tobytes()
+    with wave.open(str(OUT / "music_greenhouse.wav"), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(data)
+    print("music_greenhouse.wav", f"{length / rate:.2f}s", f"picco {np.max(np.abs(mix)):.2f}")
+
+
 def modes(freq, dur, partials, decay):
     """Sintesi modale: parziali (rapporto, ampiezza, frazione di decay) che si spengono
     ciascuno per conto suo; i parziali alti muoiono prima, come negli oggetti veri."""
@@ -1582,7 +1931,7 @@ SFX = (jump, land, flash, flash_ready, flash_dud, drip, death, tap, button,
        checkpoint, collect, mini_flash, victory, step, shadow_step, push,
        flicker_off, flicker_on, shadow_dissolve, shadow_puff, can, glass_hit, fan, rustle,
        spark)
-ALL = {f.__name__: f for f in SFX + (music, music_dark, varianti)}
+ALL = {f.__name__: f for f in SFX + (music, music_dark, music_greenhouse, varianti)}
 
 OUT.mkdir(parents=True, exist_ok=True)
 for name in sys.argv[2:] or [f.__name__ for f in SFX]:

@@ -6,6 +6,7 @@ extends Node
 const SONGS := {
 	"main": preload("res://sounds/music.wav"),
 	"dark": preload("res://sounds/music_dark.wav"),
+	"greenhouse": preload("res://sounds/music_greenhouse.wav"),
 }
 ## Secondi di dissolvenza incrociata quando si cambia canzone.
 const CROSSFADE := 1.5

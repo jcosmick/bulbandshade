@@ -63,6 +63,22 @@ const SOLUTIONS := {
 		["hold", "move_left"], ["jump", 0.3], ["wait", 0.3], ["jump", 0.3], ["wait", 0.3], ["jump", 0.4],
 		["walk_to", 1350.0], ["wait", 0.5],
 	],
+	9: [
+		# A: ponte d'ombra della cassa sopra la vasca.
+		["tp", Vector2(250, 1368)], ["wait", 0.3], ["flash"], ["wait", 0.1], ["shot", "A_flash"],
+		["walk_to", 470.0], ["hold", "move_right"], ["jump", 0.3], ["walk_to", 960.0],
+		["hold", "move_right"], ["jump", 0.45], ["wait", 0.6], ["free", "move_right"],
+		["walk_to", 1520.0], ["wait", 0.3], ["check", Vector2(1520, 1368)], ["shot", "A_end"], ["wait", 2.0],
+		# B: vetro, cassa alta e rampa d'ombra fino alla mensola.
+		["flash"], ["wait", 0.1], ["shot", "B_flash"],
+		["hold", "move_right"], ["jump", 0.3], ["wait", 0.15], ["jump", 0.4], ["walk_to", 1870.0],
+		["jump", 0.4], ["hold", "move_right"], ["wait", 0.5], ["jump", 0.4], ["wait", 0.5], ["free", "move_right"],
+		["walk_to", 2400.0], ["wait", 0.3], ["check", Vector2(2400, 708)], ["shot", "B_end"], ["wait", 2.0],
+		# C: rampa d'ombra della cassa appesa fino all'arrivo.
+		["flash"], ["wait", 0.1], ["shot", "C_flash"],
+		["hold", "move_right"], ["jump", 0.4], ["wait", 0.2], ["jump", 0.4], ["walk_to", 2940.0],
+		["hold", "move_right"], ["jump", 0.4], ["wait", 0.6], ["free", "move_right"], ["walk_to", 3070.0], ["wait", 0.5],
+	],
 }
 
 var game: Node

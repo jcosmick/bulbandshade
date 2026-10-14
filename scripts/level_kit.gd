@@ -13,6 +13,8 @@ const LIGHT_TEXTURE_RADIUS := 128.0
 const AutoLight := preload("res://scripts/auto_light.gd")
 
 static var _light_texture: Texture2D
+## Materiali condivisi da tutto il gioco (vedi shared_material).
+static var _materials := {}
 
 
 static func rect_points(size: Vector2) -> PackedVector2Array:
@@ -68,6 +70,46 @@ static func make_light(parent: Node, radius: float, energy: float, shadows: bool
 	light.shadow_filter = Light2D.SHADOW_FILTER_PCF5
 	parent.add_child(light)
 	return light
+
+
+## Materiale con questa fusione e modalità di luce, uno solo per tutto il gioco.
+## Lo shader di un materiale si compila la prima volta che si disegna (sui
+## telefoni anche mezzo secondo) e Godot lo butta quando nessun materiale lo
+## usa più: con materiali nuovi per ogni oggetto si ricompilerebbe a ogni
+## livello caricato.
+static func shared_material(blend: CanvasItemMaterial.BlendMode, light_mode := CanvasItemMaterial.LIGHT_MODE_NORMAL) -> CanvasItemMaterial:
+	var key := Vector2i(blend, light_mode)
+	if not _materials.has(key):
+		var material := CanvasItemMaterial.new()
+		material.blend_mode = blend
+		material.light_mode = light_mode
+		_materials[key] = material
+	return _materials[key]
+
+
+## Fa compilare subito lo shader con cui si disegna `item` (il suo materiale,
+## nel suo stesso layer): per qualche frame un figlio disegna un pixel quasi
+## trasparente al centro dello schermo. Così la compilazione avviene mentre il
+## livello si carica e non la prima volta che l'oggetto entra nell'inquadratura.
+## Con free_item, alla fine libera anche `item` (un supporto creato apposta).
+static func prewarm(item: CanvasItem, frames := 3, free_item := false) -> void:
+	var probe := Node2D.new()
+	probe.use_parent_material = true
+	probe.draw.connect(func() -> void:
+		var center := probe.get_global_transform_with_canvas().affine_inverse() * (probe.get_viewport_rect().size / 2.0)
+		probe.draw_rect(Rect2(center, Vector2.ONE), Color(1, 1, 1, 0.004)))
+	item.add_child(probe, false, Node.INTERNAL_MODE_BACK)
+	# item può non essere ancora nell'albero (prewarm chiamato prima di
+	# add_child): il main loop invece c'è sempre.
+	var tree := Engine.get_main_loop() as SceneTree
+	for i in frames:
+		await tree.process_frame
+		if not is_instance_valid(probe):
+			return
+		probe.queue_redraw()
+	probe.queue_free()
+	if free_item and is_instance_valid(item):
+		item.queue_free()
 
 
 ## Margine (px) attorno allo schermo entro cui un elemento conta già come

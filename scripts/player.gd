@@ -7,6 +7,8 @@ extends CharacterBody2D
 signal flashed(origin: Vector2, radius: float)
 ## Emesso quando la lampadina va in cortocircuito (acqua).
 signal died
+## La lampadina è caduta nel portalampada d'arrivo e comincia ad accendersi.
+signal socketed
 
 const SPEED := 520.0
 const GROUND_ACCEL := 4200.0
@@ -87,6 +89,8 @@ var _step_idle := 0.0
 var _step_count := 0
 ## 0 = ferma, 1 = camminata piena (sfuma per non scattare all'avvio e all'arresto).
 var _walk_blend := 0.0
+## Vero mentre entra nel portalampada d'arrivo: niente passo né inclinazione.
+var _socketed := false
 var _facing := 1.0
 var _squash := Vector2.ONE
 var _glow: PointLight2D
@@ -236,6 +240,10 @@ func _physics_process(delta: float) -> void:
 	var was_on_floor := is_on_floor()
 	var fall_speed := velocity.y
 	var push_velocity := velocity.x
+	# Bug di Godot: se il frame prima il pavimento era una cassa in movimento,
+	# move_and_slide può restare "a terra" con normale del pavimento (0, 0) e la
+	# velocità costante in discesa la passerebbe a slide() ("must be normalized").
+	floor_constant_speed = not is_on_floor() or get_floor_normal() != Vector2.ZERO
 	move_and_slide()
 	if not was_on_floor and is_on_floor():
 		_squash = Vector2(1.25, 0.8)
@@ -328,12 +336,17 @@ func enter_socket(target: Vector2) -> Tween:
 	velocity = Vector2.ZERO
 	collision_layer = 0
 	collision_mask = 0
+	_socketed = true
 	var tween := create_tween()
-	tween.tween_property(self, "global_position", target + Vector2(0, -90), 0.3) \
+	# Salto sopra il portalampada, ben allineata e dritta.
+	tween.tween_property(self, "global_position", target + Vector2(0, -80), 0.3) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tween.tween_property(self, "global_position", target, 0.35) \
-			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	tween.tween_callback(func() -> void: _squash = Vector2(1.25, 0.8))
+	# Poi cade dentro la bocca e si assesta.
+	tween.tween_property(self, "global_position", target, 0.25) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func() -> void:
+		_squash = Vector2(1.12, 0.92)
+		socketed.emit())
 	tween.tween_property(_glow, "energy", 1.6, 0.6)
 	tween.parallel().tween_property(_glow, "texture_scale", _glow.texture_scale * 5.0, 1.2)
 	return tween
@@ -343,7 +356,7 @@ func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	_squash = _squash.lerp(Vector2.ONE, minf(1.0, 12.0 * delta))
-	var walking := not dead and is_on_floor() and absf(get_real_velocity().x) >= STEP_MIN_SPEED
+	var walking := not dead and not _socketed and is_on_floor() and absf(get_real_velocity().x) >= STEP_MIN_SPEED
 	_walk_blend = move_toward(_walk_blend, 1.0 if walking else 0.0, 8.0 * delta)
 	if dead:
 		_dead_time += delta

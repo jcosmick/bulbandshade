@@ -53,10 +53,9 @@ func _ready() -> void:
 		rng.randf()
 		rng.randf()
 	_visual = LevelKit.make_overlay(self)
-	var material := CanvasItemMaterial.new()
-	material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	_visual.material = material
+	_visual.material = LevelKit.shared_material(CanvasItemMaterial.BLEND_MODE_ADD)
 	_visual.draw.connect(_draw_glints)
+	LevelKit.prewarm(_visual)
 	var player := LevelKit.find_player(self)
 	if player:
 		player.flashed.connect(_on_flashed)

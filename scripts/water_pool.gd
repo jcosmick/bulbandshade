@@ -8,8 +8,11 @@ extends Area2D
 		size = value
 		queue_redraw()
 
-const WATER := Color(0.2, 0.45, 0.9, 0.8)
-const SURFACE := Color(0.6, 0.85, 1.0, 0.9)
+## Toni smorzati come il resto della stanza: verde-azzurro torbido che si
+## scurisce verso il fondo, con il pelo dell'acqua più chiaro.
+const WATER := Color(0.24, 0.39, 0.45, 0.9)
+const DEEP := Color(0.13, 0.2, 0.26, 0.95)
+const SURFACE := Color(0.56, 0.71, 0.73, 0.95)
 const SPLASH_AMOUNT := 28
 const SPLASH_LIFETIME := 0.7
 
@@ -87,10 +90,23 @@ func _draw() -> void:
 
 func _draw_water(canvas: CanvasItem) -> void:
 	var rect := Rect2(-size / 2.0, size)
-	canvas.draw_rect(rect, WATER)
+	# Il corpo dell'acqua segue l'onda: niente stacco tra superficie e riempimento.
 	var wave := PackedVector2Array()
 	var x := rect.position.x
-	while x <= rect.end.x:
-		wave.append(Vector2(x, rect.position.y + sin(x * 0.05 + _time * 3.0) * 2.0))
+	while x < rect.end.x:
+		wave.append(Vector2(x, _wave_y(rect, x)))
 		x += 10.0
+	wave.append(Vector2(rect.end.x, _wave_y(rect, rect.end.x)))
+	var body := wave.duplicate()
+	body.append(rect.end)
+	body.append(Vector2(rect.position.x, rect.end.y))
+	var colors := PackedColorArray()
+	colors.resize(wave.size())
+	colors.fill(WATER)
+	colors.append_array([DEEP, DEEP])
+	canvas.draw_polygon(body, colors)
 	canvas.draw_polyline(wave, SURFACE, 3.0)
+
+
+func _wave_y(rect: Rect2, x: float) -> float:
+	return rect.position.y + sin(x * 0.05 + _time * 3.0) * 2.0

@@ -27,21 +27,80 @@ const WARNING_TIME := 0.7
 const FRAME := Color(0.3, 0.25, 0.22)
 const GLASS_LIT := Color(0.85, 0.92, 1.0)
 const GLASS_DARK := Color(0.12, 0.14, 0.22)
-## Pulviscolo a densità fissa: un "tassello" di particelle lungo DUST_TILE px
-## ripetuto lungo il fascio e fatto scorrere, come una texture che si muove.
-const DUST_TILE := 300.0
-## Particelle per pixel quadrato di fascio.
-const DUST_DENSITY := 1.0 / 3000.0
-const DUST_SPEED := 25.0
 ## Lunghezza usata quando length = 0: oltre i bordi di qualsiasi livello.
 const MAX_LENGTH := 10000.0
+
+## Fascio e pulviscolo: il pulviscolo lo disegna lo shader (una particella per
+## cella di DUST_CELL px, circa una ogni 3000 px quadrati, che scorre lungo il
+## fascio e ondeggia in verticale), così il fascio si ridisegna solo quando
+## cambiano la forma o la luminosità e non a ogni tick.
+const SHADER_CODE := """
+shader_type canvas_item;
+render_mode blend_add;
+
+uniform vec2 origin;
+uniform vec2 dir = vec2(1.0, 0.0);
+uniform vec2 across = vec2(0.0, 1.0);
+uniform float intensity = 1.0;
+
+const float DUST_CELL = 55.0;
+const float DUST_SPEED = 25.0;
+const float DUST_RADIUS = 2.5;
+const float WOBBLE = 6.0;
+
+varying highp vec2 world;
+
+void vertex() {
+	world = VERTEX;
+}
+
+vec2 hash2(vec2 p) {
+	vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+	p3 += dot(p3, p3.yzx + 33.33);
+	return fract((p3.xx + p3.yz) * p3.zy);
+}
+
+void fragment() {
+	highp vec2 rel = world - origin;
+	// Il pulviscolo ripete ogni 64 celle: TIME resta piccolo anche su mobile.
+	highp float flow = mod(TIME * DUST_SPEED, DUST_CELL * 64.0);
+	highp vec2 q = vec2(dot(rel, dir) - flow, dot(rel, across));
+	vec2 id = floor(q / DUST_CELL);
+	vec2 f = q - id * DUST_CELL;
+	vec2 h = hash2(vec2(mod(id.x, 64.0), id.y) + 7.0);
+	// Centro lontano dal bordo della cella quanto basta per l'ondeggiamento.
+	float margin = DUST_RADIUS + WOBBLE + 0.5;
+	vec2 center = margin + h * (DUST_CELL - 2.0 * margin);
+	center += vec2(dir.y, across.y) * sin(TIME + h.x * 20.0) * WOBBLE;
+	float dust = clamp(DUST_RADIUS + 0.5 - length(f - center), 0.0, 1.0) * 0.5 * intensity;
+	COLOR = vec4(COLOR.rgb * COLOR.a + vec3(1.0, 1.0, 0.9) * dust, 1.0);
+}
+"""
+
+static var _shader: Shader
+## Poligoni dei solidi opachi letti una volta per tick di fisica e condivisi da
+## tutte le finestre (_opaque_frame è il tick a cui si riferiscono).
+static var _opaque_cache: Array[PackedVector2Array] = []
+static var _opaque_frame := -1
 
 var _polygons: Array[PackedVector2Array] = []
 var _time := 0.0
 var _visual: Node2D
-var _dust: Array[Vector2] = []
-## Fin dove arriva davvero il fascio (per distribuire il pulviscolo).
-var _reach := 0.0
+var _material: ShaderMaterial
+## Il fascio si ricalcola solo quando cambiano i solidi o la finestra stessa:
+## quasi sempre è tutto fermo e il risultato sarebbe identico.
+var _last_opaque: Array[PackedVector2Array] = []
+var _last_transform := Transform2D()
+var _computed := false
+## Cresce a ogni ricalcolo: gli altri fasci capiscono se la forma è cambiata.
+var _version := 0
+## Parti disegnate (il fascio meno quelli che vincono le sovrapposizioni) e la
+## chiave con cui sono state calcolate.
+var _shown: Array[PackedVector2Array] = []
+var _shown_key := []
+var _drawn_lit := true
+## Stato con cui è stato disegnato il fascio (vedi _physics_process).
+var _redraw_state := []
 
 
 func _ready() -> void:
@@ -50,14 +109,14 @@ func _ready() -> void:
 	add_to_group("light_beams")
 	_time = phase
 	_visual = LevelKit.make_overlay(self, false)
-	var material := CanvasItemMaterial.new()
-	material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	_visual.material = material
+	if _shader == null:
+		_shader = Shader.new()
+		_shader.code = SHADER_CODE
+	_material = ShaderMaterial.new()
+	_material.shader = _shader
+	_visual.material = _material
 	_visual.draw.connect(_draw_beam)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(name)
-	for i in maxi(1, roundi(DUST_TILE * opening * DUST_DENSITY)):
-		_dust.append(Vector2(rng.randf(), rng.randf()))
+	LevelKit.prewarm(_visual)
 
 
 ## True quando il fascio è acceso (le ombre vengono cancellate).
@@ -76,13 +135,37 @@ func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	_time += delta
-	var opaque: Array[PackedVector2Array] = []
-	for solid in get_tree().get_nodes_in_group("solids"):
-		if not solid.is_in_group("transparent"):
-			opaque.append(solid.get_world_polygon())
-	_polygons = compute_beam(opaque)
-	_visual.queue_redraw()
-	queue_redraw()
+	var opaque := _opaque_polygons()
+	if not _computed or opaque != _last_opaque or global_transform != _last_transform:
+		_polygons = compute_beam(opaque)
+		_last_opaque = opaque
+		_last_transform = global_transform
+		_computed = true
+		_version += 1
+	# Il pulviscolo si muove nello shader: il fascio si ridisegna solo se
+	# cambiano la forma, la luminosità (anche durante il tremolio d'avviso) o un
+	# fascio che si sovrappone.
+	var state := [_version, _intensity()]
+	for other in get_tree().get_nodes_in_group("light_beams"):
+		if other != self:
+			state.append_array([other._version, other._intensity() > 0.0])
+	if state != _redraw_state:
+		_redraw_state = state
+		_visual.queue_redraw()
+	if is_lit() != _drawn_lit:
+		queue_redraw()
+
+
+## Poligoni dei solidi opachi in questo tick (vedi _opaque_cache).
+func _opaque_polygons() -> Array[PackedVector2Array]:
+	var frame := Engine.get_physics_frames()
+	if frame != _opaque_frame:
+		_opaque_frame = frame
+		_opaque_cache = []
+		for solid in get_tree().get_nodes_in_group("solids"):
+			if not solid.is_in_group("transparent"):
+				_opaque_cache.append(solid.get_world_polygon())
+	return _opaque_cache
 
 
 func _front() -> Vector2:
@@ -100,17 +183,36 @@ func compute_beam(opaque: Array[PackedVector2Array]) -> Array[PackedVector2Array
 	var b := global_transform * Vector2(0, opening / 2.0)
 	var beams: Array[PackedVector2Array] = [PackedVector2Array([a, b, b + dir * reach, a + dir * reach])]
 	var front := ShadowSystem._half_plane(global_position + _front() * 2.0, _front())
+	# Striscia del fascio: tra le rette per a e b parallele alla direzione, fino
+	# a `reach`. Un solido che ne sta tutto fuori non la tocca nemmeno estruso
+	# lungo la luce: si scarta senza le operazioni sui poligoni.
+	var across := dir.orthogonal()
+	var side_min := minf(across.dot(a), across.dot(b)) - 1.0
+	var side_max := maxf(across.dot(a), across.dot(b)) + 1.0
+	var far_end := maxf(dir.dot(a), dir.dot(b)) + reach + 1.0
 	for polygon in opaque:
+		if polygon.size() < 3 or not _crosses_strip(polygon, across, side_min, side_max, dir, far_end):
+			continue
 		for part in Geometry2D.intersect_polygons(polygon, front):
 			var swept := part.duplicate()
 			for v in part:
 				swept.append(v + dir * reach)
 			beams = ShadowSystem._subtract(beams, [Geometry2D.convex_hull(swept)])
-	_reach = 0.0
-	for beam in beams:
-		for v in beam:
-			_reach = maxf(_reach, (v - a).dot(dir))
 	return beams
+
+
+## False se polygon sta tutto da un lato della striscia del fascio o tutto
+## oltre la sua fine (proiezioni sugli assi across e dir).
+static func _crosses_strip(polygon: PackedVector2Array, across: Vector2, side_min: float, side_max: float, dir: Vector2, far_end: float) -> bool:
+	var lo := INF
+	var hi := -INF
+	var nearest := INF
+	for v in polygon:
+		var side := across.dot(v)
+		lo = minf(lo, side)
+		hi = maxf(hi, side)
+		nearest = minf(nearest, dir.dot(v))
+	return hi >= side_min and lo <= side_max and nearest <= far_end
 
 
 ## Luminosità del fascio disegnato (1 acceso, 0 spento, tremolio d'avviso).
@@ -161,33 +263,34 @@ func _draw_beam() -> void:
 	var intensity := _intensity()
 	if intensity <= 0.0:
 		return
-	var shown := _polygons
+	# Il ritaglio con i fasci che vincono le sovrapposizioni si rifà solo se è
+	# cambiato qualcosa (forme o fasci che vincono), non a ogni frame.
+	var winners: Array[WindowLight] = []
+	var key := [_version]
 	for other in get_tree().get_nodes_in_group("light_beams"):
 		if other != self and other is WindowLight and other._intensity() > 0.0 and _yields_to(other, intensity):
-			shown = _subtract_no_holes(shown, other._polygons)
-	var color := Color(BEAM, BEAM.a * intensity)
-	for polygon in shown:
-		_visual.draw_colored_polygon(polygon, color)
-	# Pulviscolo che fluttua nel fascio.
-	var dir := direction.normalized()
+			winners.append(other)
+			key.append_array([other.get_instance_id(), other._version])
+	if key != _shown_key:
+		_shown = _polygons
+		for other in winners:
+			_shown = _subtract_no_holes(_shown, other._polygons)
+		_shown_key = key
+	# Pulviscolo (nello shader): assi del fascio a partire dal bordo `a`.
 	var a := global_transform * Vector2(0, -opening / 2.0)
-	var across := global_transform * Vector2(0, opening / 2.0) - a
-	var dust_color := Color(1, 1, 0.9, 0.5 * intensity)
-	for tile in ceili(_reach / DUST_TILE):
-		for d in _dust:
-			var along := tile * DUST_TILE + fposmod(d.x * DUST_TILE + _time * DUST_SPEED, DUST_TILE)
-			if along > _reach:
-				continue
-			var point := a + across * d.y + dir * along + Vector2(0, sin(_time + d.x * 20.0) * 6.0)
-			for polygon in _polygons:
-				if Geometry2D.is_point_in_polygon(point, polygon):
-					_visual.draw_circle(point, 2.5, dust_color)
-					break
+	_material.set_shader_parameter("origin", a)
+	_material.set_shader_parameter("dir", direction.normalized())
+	_material.set_shader_parameter("across", (global_transform * Vector2(0, opening / 2.0) - a).normalized())
+	_material.set_shader_parameter("intensity", intensity)
+	var color := Color(BEAM, BEAM.a * intensity)
+	for polygon in _shown:
+		_visual.draw_colored_polygon(polygon, color)
 
 
 func _draw() -> void:
 	var half := opening / 2.0
 	var lit := Engine.is_editor_hint() or is_lit()
+	_drawn_lit = lit
 	draw_rect(Rect2(-24, -half - 10, 24, opening + 20), FRAME)
 	draw_rect(Rect2(-18, -half, 14, opening), GLASS_LIT if lit else GLASS_DARK)
 	draw_line(Vector2(-11, -half), Vector2(-11, half), FRAME, 4.0)

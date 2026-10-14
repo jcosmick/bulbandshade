@@ -1,9 +1,7 @@
 class_name ShadowPlatform
-extends CanvasGroup
+extends Node2D
 ## Disegno di un'ombra solida: si allunga dal flash e si sfalda in
 ## pallini neri insieme al suo corpo fisico. Stile piatto: solo nero, bordi netti.
-## Il riempimento è disegnato da un figlio; il gruppo ripassa il risultato con
-## un FXAA per ammorbidire le scalette sui bordi.
 
 const FILL := Color(0.0, 0.0, 0.0, 0.94)
 ## Tempo in cui l'ombra si allunga dal caster fino al limite del flash.
@@ -77,49 +75,7 @@ void fragment() {
 }
 """
 
-## FXAA sul contenuto del gruppo. L'ombra è nera uniforme, quindi i bordi stanno
-## tutti nell'alpha: si usa quella come "luminanza".
-const FXAA_CODE := """
-shader_type canvas_item;
-
-uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_linear;
-uniform vec4 fill_color;
-
-const float REDUCE_MIN = 1.0 / 128.0;
-const float REDUCE_MUL = 1.0 / 8.0;
-const float SPAN_MAX = 8.0;
-
-vec4 fetch(vec2 uv) {
-	return textureLod(screen_texture, uv, 0.0);
-}
-
-void fragment() {
-	vec2 px = SCREEN_PIXEL_SIZE;
-	vec2 uv = SCREEN_UV;
-	float l_nw = fetch(uv + vec2(-1.0, -1.0) * px).a;
-	float l_ne = fetch(uv + vec2(1.0, -1.0) * px).a;
-	float l_sw = fetch(uv + vec2(-1.0, 1.0) * px).a;
-	float l_se = fetch(uv + vec2(1.0, 1.0) * px).a;
-	float l_m = fetch(uv).a;
-	float l_min = min(l_m, min(min(l_nw, l_ne), min(l_sw, l_se)));
-	float l_max = max(l_m, max(max(l_nw, l_ne), max(l_sw, l_se)));
-
-	vec2 dir = vec2(-((l_nw + l_ne) - (l_sw + l_se)), (l_nw + l_sw) - (l_ne + l_se));
-	float reduce = max((l_nw + l_ne + l_sw + l_se) * 0.25 * REDUCE_MUL, REDUCE_MIN);
-	float rcp_min = 1.0 / (min(abs(dir.x), abs(dir.y)) + reduce);
-	dir = clamp(dir * rcp_min, vec2(-SPAN_MAX), vec2(SPAN_MAX)) * px;
-
-	vec4 a = 0.5 * (fetch(uv + dir * (1.0 / 3.0 - 0.5)) + fetch(uv + dir * (2.0 / 3.0 - 0.5)));
-	vec4 b = a * 0.5 + 0.25 * (fetch(uv - dir * 0.5) + fetch(uv + dir * 0.5));
-	float coverage = (b.a < l_min || b.a > l_max) ? a.a : b.a;
-	// Il riempimento è disegnato opaco: qui serve solo la copertura del bordo,
-	// colore e trasparenza dell'ombra si applicano dopo l'FXAA.
-	COLOR = vec4(fill_color.rgb, fill_color.a * coverage) * COLOR;
-}
-"""
-
 static var _shader: Shader
-static var _fxaa_shader: Shader
 static var _circle: Texture2D
 static var _last_sound_ms := {}
 
@@ -150,25 +106,14 @@ func setup(shape: PackedVector2Array, life: float, body: Node, light: Vector2, s
 	origin = light
 	_body = body
 
-	if _shader == null:
-		_shader = Shader.new()
-		_shader.code = SHADER_CODE
 	_material = ShaderMaterial.new()
-	_material.shader = _shader
+	_material.shader = shared_shader()
 	_material.set_shader_parameter("origin", origin)
 	_material.set_shader_parameter("cell", DOT_CELL)
 	_fill = Node2D.new()
 	_fill.material = _material
 	_fill.draw.connect(_draw_fill)
 	add_child(_fill)
-
-	if _fxaa_shader == null:
-		_fxaa_shader = Shader.new()
-		_fxaa_shader.code = FXAA_CODE
-	var fxaa := ShaderMaterial.new()
-	fxaa.shader = _fxaa_shader
-	fxaa.set_shader_parameter("fill_color", FILL)
-	material = fxaa
 	_update_material()
 
 
@@ -205,7 +150,7 @@ func _update_material() -> void:
 
 
 func _draw_fill() -> void:
-	_fill.draw_colored_polygon(polygon, Color.WHITE)
+	_fill.draw_colored_polygon(polygon, FILL)
 
 
 ## Pallini neri che si staccano dal bordo e si rimpiccioliscono quando
@@ -241,6 +186,14 @@ func _puff() -> void:
 	puff.finished.connect(puff.queue_free)
 	get_parent().add_child(puff)
 	puff.emitting = true
+
+
+## Shader delle ombre, uno solo per tutto il gioco (vedi ShadowSystem.prewarm).
+static func shared_shader() -> Shader:
+	if _shader == null:
+		_shader = Shader.new()
+		_shader.code = SHADER_CODE
+	return _shader
 
 
 static func _play_once(sound: String, volume_db: float) -> void:

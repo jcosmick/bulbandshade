@@ -31,6 +31,8 @@ var _camera: Camera2D
 var _darkness: CanvasModulate
 var _shadow_layer: CanvasLayer
 var _shadows: ShadowSystem
+## Copre di nero quello che sta fuori da level_rect.
+var _outside_mask: Node2D
 var _controls_bg: ColorRect
 var _joystick: TouchJoystick
 var _buttons := {}
@@ -66,6 +68,15 @@ func _ready() -> void:
 	_shadows = ShadowSystem.new()
 	_shadows.visual_layer = _shadow_layer
 	add_child(_shadows)
+	# Sopra il livello e i suoi overlay (layer 1-2), sotto l'interfaccia: copre
+	# tutto ciò che sta fuori dal riquadro del livello.
+	var mask_layer := CanvasLayer.new()
+	mask_layer.layer = 5
+	mask_layer.follow_viewport_enabled = true
+	add_child(mask_layer)
+	_outside_mask = Node2D.new()
+	_outside_mask.draw.connect(_draw_outside_mask)
+	mask_layer.add_child(_outside_mask)
 	_build_hud()
 	get_viewport().size_changed.connect(_layout)
 	load_level(Progress.selected_level)
@@ -97,6 +108,8 @@ func load_level(index: int) -> void:
 		checkpoint.reached.connect(_on_checkpoint_reached)
 	_shadows.world = level
 	_shadows.level_rect = level.level_rect
+	_shadows.prewarm()
+	_outside_mask.queue_redraw()
 	camera_focus = null
 	set_controls_visible(true)
 
@@ -110,6 +123,20 @@ func load_level(index: int) -> void:
 	var intro := level.get_node_or_null("Intro") as Cutscene
 	if intro:
 		intro.start(self)
+
+
+## Quattro fasce attorno a level_rect, abbastanza grandi da coprire lo
+## schermo con qualsiasi zoom e posizione della telecamera.
+func _draw_outside_mask() -> void:
+	if level == null:
+		return
+	var rect := level.level_rect
+	var far := 100000.0
+	var color := ProjectSettings.get_setting("rendering/environment/defaults/default_clear_color") as Color
+	_outside_mask.draw_rect(Rect2(rect.position.x - far, rect.position.y - far, rect.size.x + far * 2.0, far), color)
+	_outside_mask.draw_rect(Rect2(rect.position.x - far, rect.end.y, rect.size.x + far * 2.0, far), color)
+	_outside_mask.draw_rect(Rect2(rect.position.x - far, rect.position.y, far, rect.size.y), color)
+	_outside_mask.draw_rect(Rect2(rect.end.x, rect.position.y, far, rect.size.y), color)
 
 
 func _dark_color() -> Color:
@@ -205,9 +232,11 @@ func _on_goal_reached() -> void:
 		return
 	won = true
 	var tween := player.enter_socket(goal.socket_position())
-	await tween.finished
+	# Il suono parte quando la lampadina tocca il fondo e si accende.
+	await player.socketed
 	Sfx.play("victory", 0.0, 0.0)
 	Music.duck(1.0)
+	await tween.finished
 	_light_tween = create_tween()
 	_light_tween.tween_property(_darkness, "color", LIT, 1.2)
 	_light_tween.tween_callback(_show_win_panel)
@@ -356,16 +385,14 @@ func _layout() -> void:
 	var view := get_viewport().get_visible_rect().size
 	var area := Vector2(view.x, view.y - CONTROLS_HEIGHT)
 	var rect := level.level_rect
-	var zoom := minf(area.x / rect.size.x, area.y / rect.size.y)
-	# Livello più alto dello schermo: si adatta in larghezza e la telecamera
-	# segue la lampadina.
-	# Livelli più grandi dello schermo (più alti, o più larghi di 1080 px):
-	# si mostra sempre una larghezza di 1080 px e la telecamera segue la
-	# lampadina in entrambe le direzioni.
+	# Si mostra al massimo una larghezza di 1080 px, ingrandendo se serve
+	# perché l'area sopra i controlli resti tutta dentro il livello (mai
+	# bande fuori dal livello, anche sui telefoni più allungati di 9:16 o sui
+	# tablet). Se così il livello esce dallo schermo in una direzione, la
+	# telecamera segue la lampadina.
 	var width := minf(rect.size.x, VIEW_WIDTH)
-	_follow = rect.size.x > VIEW_WIDTH + 1.0 or rect.size.y * (area.x / width) > area.y + 1.0
-	if _follow:
-		zoom = area.x / width
+	var zoom := maxf(area.x / width, area.y / rect.size.y)
+	_follow = rect.size.x * zoom > area.x + 1.0 or rect.size.y * zoom > area.y + 1.0
 	_camera.zoom = Vector2(zoom, zoom)
 	var level_top := 0.0
 	if _follow:
@@ -400,11 +427,33 @@ func _update_focus_y() -> void:
 ## Posizione della telecamera che tiene la lampadina al centro dell'area di
 ## gioco (sopra i controlli) senza mostrare oltre i bordi del livello.
 func _camera_target() -> Vector2:
+	var controls := CONTROLS_HEIGHT / _camera.zoom.y
+	var focus := camera_focus.global_position if is_instance_valid(camera_focus) else Vector2(player.global_position.x, _focus_y)
+	return _clamp_camera(focus + Vector2(0, controls / 2.0))
+
+
+## Posizione della telecamera più vicina a `target` che non mostra oltre i
+## bordi del livello.
+func _clamp_camera(target: Vector2) -> Vector2:
 	var view := get_viewport().get_visible_rect().size / _camera.zoom
 	var controls := CONTROLS_HEIGHT / _camera.zoom.y
 	var rect := level.level_rect
-	var focus := camera_focus.global_position if is_instance_valid(camera_focus) else Vector2(player.global_position.x, _focus_y)
-	var target := focus + Vector2(0, controls / 2.0)
 	target.x = clampf(target.x, rect.position.x + view.x / 2.0, maxf(rect.position.x + view.x / 2.0, rect.end.x - view.x / 2.0))
 	target.y = clampf(target.y, rect.position.y + view.y / 2.0, rect.end.y + controls - view.y / 2.0)
 	return target
+
+
+## Centro dell'area di gioco inquadrata (lo schermo sopra i controlli), in
+## coordinate del livello.
+func view_center() -> Vector2:
+	return _camera.get_screen_center_position() - Vector2(0, CONTROLS_HEIGHT / _camera.zoom.y / 2.0)
+
+
+## Il view_center() più vicino a `point` che la telecamera può raggiungere:
+## è `point` stesso, salvo vicino ai bordi del livello dove la telecamera si
+## ferma. Nei livelli che stanno nello schermo la telecamera non si muove.
+func reachable_view_center(point: Vector2) -> Vector2:
+	if not _follow:
+		return view_center()
+	var controls := Vector2(0, CONTROLS_HEIGHT / _camera.zoom.y / 2.0)
+	return _clamp_camera(point + controls) - controls

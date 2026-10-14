@@ -37,6 +37,11 @@ var level_rect := Rect2(0, 0, 1080, 1520)
 var _flash_origin := Vector2(-INF, -INF)
 ## Occluder (solo per la luce del flash) allineati ai fasci accesi.
 var _beam_occluders: Array[LightOccluder2D] = []
+## Stato dei fasci (forma e persiana) con cui sono stati allineati gli
+## occluder: finché non cambia non serve rifarlo.
+var _occluders_state := []
+## Fascio -> [versione, poligoni allargati di BEAM_INSIDE_MARGIN].
+var _grown_beams := {}
 
 
 ## Flash del giocatore: ombre dalla sua posizione.
@@ -53,7 +58,21 @@ func flash(origin: Vector2, radius: float) -> bool:
 
 ## True se il punto è dentro (o a ridosso di) un fascio di luce acceso.
 func is_in_beam(point: Vector2) -> bool:
-	return _inside_any(point, _beam_polygons())
+	for beam in get_tree().get_nodes_in_group("light_beams"):
+		if _inside_beam(point, beam):
+			return true
+	return false
+
+
+## Compila lo shader delle ombre mentre il livello si carica, invece che al
+## primo flash (sui telefoni la compilazione blocca il gioco per un attimo).
+func prewarm() -> void:
+	var holder := Node2D.new()
+	var material := ShaderMaterial.new()
+	material.shader = ShadowPlatform.shared_shader()
+	holder.material = material
+	visual_layer.add_child(holder)
+	LevelKit.prewarm(holder, 3, true)
 
 
 ## Cancella tutte le ombre (es. quando la lampadina ricompare).
@@ -65,17 +84,26 @@ func clear() -> void:
 
 ## I fasci di luce delle finestre tagliano le ombre già esistenti (es. quando
 ## una persiana si apre o una cassa smette di bloccare il fascio).
+## Ogni ombra si ricontrolla solo quando i fasci cambiano (forma o persiana):
+## con i fasci fermi il risultato sarebbe identico a quello del frame prima.
 func _physics_process(_delta: float) -> void:
-	_sync_beam_occluders()
+	var state := _beams_state()
+	_sync_beam_occluders(state)
 	var beams := _beam_polygons()
 	if beams.is_empty() or visual_layer == null:
 		return
+	var beam_bounds: Array[Rect2] = []
+	for beam in beams:
+		beam_bounds.append(_bounds(beam))
 	for platform in visual_layer.get_children():
 		if not platform is ShadowPlatform or platform.is_queued_for_deletion():
 			continue
+		if platform.get_meta(&"beams_state", []) == state:
+			continue
+		platform.set_meta(&"beams_state", state)
 		var touched := false
-		for beam in beams:
-			if _bounds(beam).intersects(platform.bounds):
+		for rect in beam_bounds:
+			if rect.intersects(platform.bounds):
 				touched = true
 				break
 		if not touched:
@@ -108,10 +136,35 @@ func _beam_polygons() -> Array[PackedVector2Array]:
 func _beam_barriers(origin: Vector2) -> Array[PackedVector2Array]:
 	var result: Array[PackedVector2Array] = []
 	for beam in get_tree().get_nodes_in_group("light_beams"):
-		var polygons: Array[PackedVector2Array] = beam.beam_polygons()
-		if not _inside_any(origin, polygons):
-			result.append_array(polygons)
+		if not _inside_beam(origin, beam):
+			result.append_array(beam.beam_polygons())
 	return result
+
+
+## Forma e persiana di ogni fascio: cambia solo quando un fascio cambia.
+func _beams_state() -> Array:
+	var state := []
+	for beam in get_tree().get_nodes_in_group("light_beams"):
+		state.append_array([beam.get_instance_id(), beam._version, beam.is_lit()])
+	return state
+
+
+## Come _inside_any sul fascio, ma i poligoni allargati si calcolano una volta
+## per forma del fascio invece che a ogni chiamata.
+func _inside_beam(point: Vector2, beam: Node) -> bool:
+	if not beam.is_lit():
+		return false
+	var cached: Array = _grown_beams.get(beam.get_instance_id(), [])
+	if cached.is_empty() or cached[0] != beam._version:
+		var grown: Array[PackedVector2Array] = []
+		for polygon in beam.beam_polygons():
+			grown.append_array(Geometry2D.offset_polygon(polygon, BEAM_INSIDE_MARGIN))
+		cached = [beam._version, grown]
+		_grown_beams[beam.get_instance_id()] = cached
+	for grown: PackedVector2Array in cached[1]:
+		if Geometry2D.is_point_in_polygon(point, grown):
+			return true
+	return false
 
 
 static func _inside_any(point: Vector2, polygons: Array[PackedVector2Array]) -> bool:
@@ -124,9 +177,15 @@ static func _inside_any(point: Vector2, polygons: Array[PackedVector2Array]) -> 
 
 ## Tiene gli occluder visivi allineati ai fasci che bloccano l'ultimo flash.
 ## Agiscono solo sulle luci con BEAM_OCCLUDER_MASK nello shadow_item_cull_mask.
-func _sync_beam_occluders() -> void:
+func _sync_beam_occluders(state: Array = []) -> void:
 	if world == null or not is_instance_valid(world):
 		return
+	if state.is_empty():
+		state = _beams_state()
+	var key := [state, _flash_origin, world.get_instance_id()]
+	if key == _occluders_state:
+		return
+	_occluders_state = key
 	var barriers := _beam_barriers(_flash_origin)
 	var used := 0
 	for polygon in barriers:

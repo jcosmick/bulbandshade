@@ -318,6 +318,15 @@ Non bloccano la lampadina e non fanno ombra: si muovono e basta.
   `density` quanti tralci ogni 100 px, `leaf_style` `ivy` o `heart`.
 - `pattern` di piante e rampicanti: come per crepe e ragnatele, cambia la forma.
 
+### Parallasse (primo piano e sfondo)
+
+| Prefab | Cosa è | Parametri principali |
+|---|---|---|
+| `parallax/parallax_front.tscn` | Layer di prop davanti alla telecamera, scuri e veloci | `scroll_scale`, `modulate` |
+| `parallax/parallax_back.tscn` | Layer di prop di sfondo, lenti e attenuati | `scroll_scale`, `modulate` |
+
+Guida completa: [PARALLAX_TUTORIAL.md](PARALLAX_TUTORIAL.md)
+
 ### Strumenti (solo editor)
 
 | Prefab | Cosa è | Parametri principali |

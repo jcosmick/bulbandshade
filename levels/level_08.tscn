@@ -29,11 +29,11 @@
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/hanging_crate.tscn" id="27_174un"]
 [ext_resource type="PackedScene" path="res://prefabs/props/wall_socket.tscn" id="28_8rf2p"]
 
-[node name="LevelNew" type="Node2D" unique_id=1709908472]
+[node name="LevelNew2" type="Node2D" unique_id=1709908472]
 script = ExtResource("1")
 level_name = "8 · Greenhouse"
 icon = "greenhouse"
-music = "dark"
+music = "greenhouse"
 level_rect = Rect2(0, 0, 4080, 1520)
 
 [node name="Background" type="Node2D" parent="." unique_id=1968676260]
@@ -81,6 +81,14 @@ size = Vector2(1800, 100)
 left_wall = false
 right_wall = false
 
+[node name="PlantFern2" parent="." unique_id=753745713 instance=ExtResource("14_u7eqt")]
+z_index = -5
+position = Vector2(1287, 1494)
+height = 330.0
+pot = "none"
+pot_width = 90.0
+pattern = 0
+
 [node name="GlassCube" parent="." unique_id=1793183690 instance=ExtResource("10_ck2xc")]
 position = Vector2(511, 1379)
 size = Vector2(100, 80)
@@ -96,14 +104,6 @@ position = Vector2(1384, 1352)
 z_index = -5
 position = Vector2(782, 1498)
 height = 380.0
-pot = "none"
-pot_width = 90.0
-pattern = 0
-
-[node name="PlantFern2" parent="." unique_id=753745713 instance=ExtResource("14_u7eqt")]
-z_index = -5
-position = Vector2(1287, 1494)
-height = 330.0
 pot = "none"
 pot_width = 90.0
 pattern = 0
@@ -306,15 +306,6 @@ position = Vector2(3225, 1423)
 kind = "banana"
 height = 420.0
 pot_width = 80.0
-
-[node name="GroundPlant4" parent="." unique_id=1995625087 instance=ExtResource("14_u7eqt")]
-z_index = -5
-position = Vector2(2919, 1421)
-kind = "monstera"
-height = 120.0
-pot = "planter"
-pot_width = 50.0
-pattern = 8
 
 [node name="Jar2" parent="." unique_id=1238149875 instance=ExtResource("21_fs5cg")]
 z_index = -4

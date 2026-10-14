@@ -42,11 +42,9 @@ func _ready() -> void:
 	_halo.scale = Vector2.ONE * FLASH_RADIUS / LevelKit.LIGHT_TEXTURE_RADIUS
 	_halo.modulate = Color(color, 0.0)
 	_halo.show_behind_parent = true
-	var additive := CanvasItemMaterial.new()
-	additive.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	additive.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
-	_halo.material = additive
+	_halo.material = LevelKit.shared_material(CanvasItemMaterial.BLEND_MODE_ADD, CanvasItemMaterial.LIGHT_MODE_UNSHADED)
 	add_child(_halo)
+	LevelKit.prewarm(_halo)
 
 
 ## Mini flash del suo colore.

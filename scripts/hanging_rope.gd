@@ -22,8 +22,9 @@ extends Node2D
 		segments = value
 		queue_redraw()
 ## Cosa c'è in fondo alla fune ("knot" sulla catena è un lucchetto; il cavo
-## finisce sempre con il rame sfilacciato).
-@export_enum("knot", "hook", "loop") var end_style := "knot":
+## finisce sempre con il rame sfilacciato). "hanged": una lampadina spenta
+## appesa per il collo al cappio.
+@export_enum("knot", "hook", "loop", "hanged") var end_style := "knot":
 	set(value):
 		end_style = value
 		queue_redraw()
@@ -34,6 +35,12 @@ extends Node2D
 ## Solo cavo: scintille dal rame scoperto a intervalli casuali (oltre a quelle
 ## che fa quando la lampadina lo tocca).
 @export var sparking := true
+## Spinta di una corrente d'aria (px/s²): la fune dondola piano da sola.
+## 0 = ferma finché la lampadina non la tocca.
+@export var sway := 0.0
+## Se falso la lampadina non la sposta (per le funi nei layer di parallasse,
+## che non stanno dove passa la lampadina).
+@export var react_to_player := true
 
 const GRAVITY := 1800.0
 ## Smorzamento a ogni passo: più è basso, prima la fune smette di oscillare.
@@ -57,6 +64,10 @@ const LINK_RATIO := 2.6
 ## Secondi minimi tra due suoni (catena) o due scintille (cavo) al tocco.
 const TOUCH_COOLDOWN := 0.35
 const SPARK_INTERVAL := Vector2(2.0, 7.0)
+## Lampadina impiccata: punto del collo (coordinate dei piedi di DeadBulb)
+## stretto dal cappio. Periodo (secondi) della corrente d'aria.
+const NECK_Y := -40.0
+const SWAY_PERIOD := 5.5
 
 var _points := PackedVector2Array()
 var _previous := PackedVector2Array()
@@ -64,6 +75,7 @@ var _area: Area2D
 var _sound: AudioStreamPlayer2D
 var _touch_cooldown := 0.0
 var _spark_wait := 0.0
+var _time := 0.0
 
 
 func _ready() -> void:
@@ -86,6 +98,8 @@ func _ready() -> void:
 	if kind == "chain":
 		_sound = Sfx.make_player_2d("can", self)
 	_spark_wait = randf_range(SPARK_INTERVAL.x, SPARK_INTERVAL.y)
+	# Ogni fune parte da un punto diverso della corrente: non dondolano insieme.
+	_time = randf() * SWAY_PERIOD
 	LevelKit.process_on_screen(self, Rect2(-length, 0, length * 2.0, length))
 
 
@@ -93,7 +107,8 @@ func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	# Integrazione di Verlet: la velocità è la differenza dal passo precedente.
-	var fall := Vector2(0, GRAVITY * delta * delta)
+	_time += delta
+	var fall := Vector2(sin(_time * TAU / SWAY_PERIOD) * sway, GRAVITY) * delta * delta
 	for i in range(1, _points.size()):
 		var current := _points[i]
 		_points[i] = current + (current - _previous[i]) * DAMPING + fall
@@ -104,7 +119,8 @@ func _physics_process(delta: float) -> void:
 		if _spark_wait <= 0.0:
 			_spark_wait = randf_range(SPARK_INTERVAL.x, SPARK_INTERVAL.y)
 			SparkBurst.spawn(self, _points[segments], randf_range(0.3, 0.8))
-	_push_by_player(delta)
+	if react_to_player:
+		_push_by_player(delta)
 	var rest := length / segments
 	for k in ITERATIONS:
 		_points[0] = Vector2.ZERO
@@ -222,7 +238,27 @@ func _draw() -> void:
 			draw_line(Vector2(-16, 12), Vector2(-16, 7), METAL, 4.0)
 		"loop":
 			draw_arc(Vector2(0, 12), 12.0, 0.0, TAU, 20, color, thickness)
+		"hanged":
+			_draw_hanged(Transform2D(down.angle() - PI / 2.0, end))
 	draw_set_transform(Vector2.ZERO)
+
+
+## Lampadina spenta appesa per il collo: il vetro (la testa) sta sopra il
+## cappio, un po' reclinato, e l'attacco pende sotto. `base` è il sistema del
+## fondo della fune (che scende lungo +y).
+func _draw_hanged(base: Transform2D) -> void:
+	# Ogni lampadina ha la testa reclinata in modo diverso (fisso per posizione).
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(position)
+	var head_tilt := rng.randf_range(0.12, 0.35) * (1.0 if rng.randf() < 0.5 else -1.0)
+	var bulb := base * Transform2D(head_tilt, Vector2.ZERO) * Transform2D(0.0, Vector2(0, -NECK_Y))
+	DeadBulb.draw_bulb(self, bulb, "off", "x", rng.randi())
+	# Il cappio stretto attorno al collo e il nodo di lato.
+	draw_set_transform_matrix(base * Transform2D(0.0, Vector2(1.0, 0.35), 0.0, Vector2.ZERO))
+	draw_arc(Vector2.ZERO, 22.0, 0.0, TAU, 20, ROPE_DARK, thickness * 1.6)
+	draw_arc(Vector2.ZERO, 22.0, 0.0, TAU, 20, ROPE, thickness)
+	draw_set_transform_matrix(base)
+	draw_circle(Vector2(-16, -3), thickness * 1.2, ROPE_DARK)
 
 
 ## Maglie lungo la catena, alternate: una vista di fronte (anello) e una di

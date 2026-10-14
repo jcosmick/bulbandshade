@@ -5,8 +5,8 @@ extends Node2D
 @export var level_name := "Livello"
 ## Icona della scheda nel menu: "crate", "glass", "rain", "warehouse", "rail", "factory" (vedi Icons).
 @export_enum("crate", "glass", "rain", "warehouse", "rail", "factory", "cellar", "greenhouse") var icon := "crate"
-## Canzone di sottofondo (vedi Music.SONGS): "dark" per i livelli a tema cupo.
-@export_enum("main", "dark") var music := "main"
+## Canzone di sottofondo (vedi Music.SONGS): "dark" per i livelli a tema cupo, "greenhouse" per la serra.
+@export_enum("main", "dark", "greenhouse") var music := "main"
 ## Area giocabile, usata per inquadrare la telecamera e limitare le ombre.
 @export var level_rect := Rect2(0, 0, 1080, 1520)
 

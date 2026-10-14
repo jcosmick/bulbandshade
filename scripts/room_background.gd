@@ -6,8 +6,11 @@ extends Node2D
 ## quadrati di vetro smerigliato su un muretto di mattoni. Le piante oltre il
 ## vetro sono su due piani che scorrono in parallasse quando la telecamera si
 ## muove (solo in gioco, non nell'editor). Il magazzino ha una parete in
-## lamiera e scaffalature su due piani in parallasse, dietro pilastri fissi.
-@export_enum("room", "greenhouse", "warehouse") var style := "room":
+## lamiera e scaffalature su due piani in parallasse, sotto una trave fissa.
+## La stanza abbandonata (livelli "dark") ha l'intonaco umido e scrostato,
+## la boiserie marcia e, in parallasse, file di lampadine spente appese al
+## soffitto, sotto una trave di legno che gocciola.
+@export_enum("room", "greenhouse", "warehouse", "abandoned") var style := "room":
 	set(value):
 		style = value
 		_refresh()
@@ -27,8 +30,8 @@ extends Node2D
 	set(value):
 		rack_shadow_opacity = value
 		_refresh()
-## Solo serra e magazzino: cambialo per avere piante, vetri e scaffali
-## disposti diversamente.
+## Solo serra, magazzino e stanza abbandonata: cambialo per avere piante,
+## vetri, scaffali, macchie e lampadine disposti diversamente.
 @export var pattern := 1:
 	set(value):
 		pattern = value
@@ -59,6 +62,9 @@ const PARALLAX_NEAR := 0.3
 ## Magazzino: la parete di lamiera è la cosa più lontana, quindi segue la
 ## telecamera più degli scaffali.
 const PARALLAX_WALL := 0.75
+## Magazzino: parete e scaffali lontani sono un solo strato (una texture a
+## tutto schermo in meno), che scorre a metà tra le loro velocità di prima.
+const PARALLAX_WAREHOUSE_BACK := 0.7
 const MORTAR := Color(0.25, 0.21, 0.24)
 const BRICK := Color(0.33, 0.23, 0.23)
 const BRICK_DARK := Color(0.27, 0.19, 0.2)
@@ -85,23 +91,48 @@ const RACK_NEAR := Color(0.33, 0.33, 0.38)
 const GOODS_FAR := Color(0.31, 0.3, 0.34)
 const GOODS_NEAR := [Color(0.38, 0.33, 0.31), Color(0.35, 0.31, 0.3), Color(0.36, 0.34, 0.36)]
 const RACK_SHADOW_OFFSET := Vector2(14, 10)
-## Pilastri e trave in primo piano (fermi col livello).
+## Trave in primo piano (ferma col livello).
 const GIRDER := Color(0.17, 0.17, 0.21)
 const GIRDER_LIGHT := Color(0.26, 0.26, 0.31)
-const PILLAR_STEP := 720.0
-const PILLAR_WIDTH := 48.0
+
+## Stanza abbandonata: intonaco verdognolo e umido con la carta da parati a
+## righe, chiazze di intonaco scrostato, colature d'acqua e umidità che risale.
+const DAMP_WALL := Color(0.29, 0.3, 0.28)
+const DAMP_STRIPE := Color(0.27, 0.28, 0.26)
+const DAMP_PATTERN := Color(0.31, 0.32, 0.3)
+const PLASTER := Color(0.33, 0.33, 0.31)
+const STAIN := Color(0.17, 0.18, 0.14)
+const MOLD := Color(0.17, 0.22, 0.17)
+const WALL_CRACK := Color(0.19, 0.19, 0.19)
+## Boiserie marcia, con assi mancanti (buco nero dietro).
+const ROT_WOOD := Color(0.24, 0.2, 0.18)
+const ROT_WOOD_DARK := Color(0.19, 0.16, 0.14)
+const VOID := Color(0.08, 0.08, 0.09)
+const PLANK := 64.0
+## Lampadine spente appese, come sagome appena più scure del muro.
+const HANGING_FAR := Color(0.24, 0.25, 0.24)
+const HANGING_NEAR := Color(0.21, 0.22, 0.21)
+## Trave di legno in alto, fissa col livello.
+const BEAM := Color(0.18, 0.15, 0.14)
+const BEAM_LIGHT := Color(0.25, 0.21, 0.19)
+const BEAM_HEIGHT := 46.0
 
 ## In gioco ogni strato di serra e magazzino viene disegnato una volta sola in
 ## una texture: migliaia di rettangoli e cerchi diventano un solo sprite per
 ## strato. Risoluzione della texture rispetto al livello, per strato: quelli
 ## sfocati o lisci reggono bene una risoluzione bassa (meno memoria).
 const BAKE_SCALE := {
-	"greenhouse": {BASE: 0.25, FAR: 0.4, NEAR: 0.4, FROST_LAYER: 0.25},
-	"warehouse": {BACK: 0.5, FAR: 0.5, NEAR: 0.5, FRONT: 0.5},
+	"greenhouse": {BASE: 0.25, FAR: 0.4, NEAR: 0.4},
+	"warehouse": {BACK: 0.5, NEAR: 0.5},
+	"abandoned": {BACK: 0.5, FAR: 0.5, NEAR: 0.5, FRONT: 0.5},
 }
+## Lato (texel) dei riquadri in cui si dividono le texture degli strati: si
+## disegnano solo quelli non vuoti.
+const BAKE_TILE := 64
 ## Lato massimo di una texture (limite sicuro sui telefoni).
 const MAX_TEXTURE := 4096.0
-## Magazzino: px di fondo lasciati sotto i bordi della parete in texture.
+## Magazzino e stanza abbandonata: px di fondo lasciati sotto i bordi della
+## parete in texture.
 const EDGE_OVERLAP := 8.0
 ## Strati, dal più lontano: il fondo (questo nodo), la parete in parallasse
 ## del magazzino, il piano lontano, quello vicino, il velo smerigliato della
@@ -122,8 +153,16 @@ var _front: Node2D
 var _frost: Node2D
 ## Solo magazzino: la parete di fondo, in parallasse dietro agli scaffali.
 var _back: Node2D
-## Strato -> texture già disegnata (vuoto finché non è pronta, o nell'editor).
+## Strato -> texture già disegnata (vuoto finché non è pronta, o nell'editor;
+## null se lo strato è vuoto).
 var _baked := {}
+## Strato -> parte del fondo coperta dalla texture: solo la zona dove lo
+## strato disegna qualcosa (le piante stanno in una fascia vicino al pavimento,
+## il resto del rettangolo trasparente costerebbe comunque alla GPU).
+var _baked_rect := {}
+## Strato -> riquadri non vuoti della texture: [rettangolo nel fondo,
+## rettangolo nella texture]. Si disegnano solo quelli (vedi _store_baked).
+var _baked_tiles := {}
 
 
 func _ready() -> void:
@@ -161,6 +200,8 @@ func _bake() -> void:
 		var canvas := Node2D.new()
 		canvas.transform = Transform2D(0.0, Vector2(factor, factor), 0.0, -rect.position * factor)
 		canvas.draw.connect(_paint.bind(which, canvas))
+		if style == "greenhouse" and (which == FAR or which == NEAR):
+			canvas.material = _frost_material()
 		viewport.add_child(canvas)
 		add_child(viewport, false, Node.INTERNAL_MODE_BACK)
 		viewports[which] = viewport
@@ -173,13 +214,15 @@ func _bake() -> void:
 	premultiplied.blend_mode = CanvasItemMaterial.BLEND_MODE_PREMULT_ALPHA
 	for which: int in viewports:
 		var viewport: SubViewport = viewports[which]
-		_baked[which] = ImageTexture.create_from_image(viewport.get_texture().get_image())
+		_store_baked(which, viewport.get_texture().get_image())
 		viewport.queue_free()
 		var layer := _layer(which)
 		layer.material = premultiplied
 		layer.queue_redraw()
 	# Magazzino: ora che la parete è in texture il fondo disegna solo i bordi.
 	queue_redraw()
+	# Serra: il velo ora è dentro le piante.
+	_frost.queue_redraw()
 
 
 func _layer(which: int) -> CanvasItem:
@@ -206,9 +249,10 @@ func _process(_delta: float) -> void:
 	# dal pavimento.
 	var screen_center := get_viewport().get_canvas_transform().affine_inverse() * (get_viewport_rect().size / 2.0)
 	var shift := to_local(screen_center).x - rect.get_center().x
-	if style == "warehouse" and _back.position.x != shift * PARALLAX_WALL:
+	var back_parallax := PARALLAX_WAREHOUSE_BACK if style == "warehouse" else PARALLAX_WALL
+	if style != "greenhouse" and _back.position.x != shift * back_parallax:
 		queue_redraw()
-	_back.position.x = shift * PARALLAX_WALL
+	_back.position.x = shift * back_parallax
 	_far.position.x = shift * PARALLAX_FAR
 	_near.position.x = shift * PARALLAX_NEAR
 
@@ -222,10 +266,83 @@ func _draw() -> void:
 
 ## Uno strato: la texture se è pronta, altrimenti il disegno vero e proprio.
 func _draw_layer(which: int, canvas: CanvasItem) -> void:
+	# Serra: il velo è già dentro le texture delle piante (_frost_material).
+	if which == FROST_LAYER and style == "greenhouse" and _baked.has(NEAR):
+		return
 	if _baked.has(which):
-		canvas.draw_texture_rect(_baked[which], rect, false)
+		# Riquadri della stessa texture: un solo draw call. Niente clip_uv,
+		# così ai bordi tra riquadri il filtro legge i texel vicini come prima.
+		for tile: Array in _baked_tiles.get(which, []):
+			canvas.draw_texture_rect_region(_baked[which], tile[0], tile[1], Color.WHITE, false, false)
 	else:
 		_paint(which, canvas)
+
+
+## Salva lo strato cotto tenendo solo la parte con qualcosa disegnato (più un
+## bordo trasparente, così il filtro ai margini resta identico). Ogni pixel
+## della texture resta dove era: cambia solo quanto rettangolo si disegna.
+func _store_baked(which: int, image: Image) -> void:
+	var used := image.get_used_rect()
+	if not used.has_area():
+		_baked[which] = null
+		return
+	used = used.grow(2).intersection(Rect2i(Vector2i.ZERO, image.get_size()))
+	var texel := rect.size / Vector2(image.get_size())
+	var cropped := image.get_region(used)
+	_baked[which] = ImageTexture.create_from_image(cropped)
+	_baked_rect[which] = Rect2(rect.position + Vector2(used.position) * texel, Vector2(used.size) * texel)
+	# Dentro il ritaglio il disegno può essere sparso (scaffali, piante): si
+	# tengono solo i riquadri con qualcosa, controllando anche 1 texel attorno
+	# perché il filtro ai bordi del riquadro legge i vicini.
+	var tiles := []
+	var bounds := Rect2i(Vector2i.ZERO, cropped.get_size())
+	for y in range(0, cropped.get_height(), BAKE_TILE):
+		for x in range(0, cropped.get_width(), BAKE_TILE):
+			var tile := Rect2i(x, y, BAKE_TILE, BAKE_TILE).intersection(bounds)
+			if cropped.get_region(tile.grow(1).intersection(bounds)).is_invisible():
+				continue
+			var source := Rect2(tile)
+			tiles.append([Rect2(_baked_rect[which].position + source.position * texel, source.size * texel), source])
+	_baked_tiles[which] = tiles
+
+
+## Serra: le piante si cuociono già viste attraverso il velo smerigliato,
+## invece di disegnare il velo come strato a tutto schermo sopra di loro. Il
+## velo è il vetro di fondo al FROST di opacità: sopra una pianta equivale a
+## mescolarne il colore al FROST con quello del vetro alla stessa altezza.
+## La parallasse è solo orizzontale e il vetro sfuma solo in verticale, quindi
+## il risultato non cambia (a parte le piccole differenze tra una lastra e
+## l'altra, sotto l'1%).
+func _frost_material() -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = """
+shader_type canvas_item;
+uniform float top;
+uniform float bottom;
+uniform float frost;
+uniform vec4 glass_top;
+uniform vec4 glass_bottom;
+varying float y;
+
+void vertex() {
+	y = VERTEX.y;
+}
+
+void fragment() {
+	if (y >= top && y < bottom) {
+		float t = clamp(1.0 - (y - top) / max(bottom - top, 1.0), 0.0, 1.0);
+		COLOR.rgb = mix(COLOR.rgb, mix(glass_bottom.rgb, glass_top.rgb, t), frost);
+	}
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("top", rect.position.y)
+	material.set_shader_parameter("bottom", wainscot_y)
+	material.set_shader_parameter("frost", FROST)
+	material.set_shader_parameter("glass_top", GLASS_TOP)
+	material.set_shader_parameter("glass_bottom", GLASS_BOTTOM)
+	return material
 
 
 ## Ogni pixel si colora una volta sola: la parete va solo tra le strisce e
@@ -256,27 +373,36 @@ func _paint(which: int, canvas: CanvasItem) -> void:
 		match which:
 			# Riempie i bordi che la parete in parallasse lascia scoperti.
 			BASE: _draw_sheet_gap(canvas)
-			BACK: _draw_sheet_wall(canvas)
-			FAR, NEAR: _draw_racks(canvas, which == NEAR)
-			FRONT: _draw_pillars(canvas)
+			BACK:
+				_draw_sheet_wall(canvas)
+				_draw_racks(canvas, false)
+			NEAR: _draw_racks(canvas, true)
+			FRONT: _draw_girder(canvas)
+	elif style == "abandoned":
+		match which:
+			BASE: _draw_sheet_gap(canvas)
+			BACK: _draw_damp_wall(canvas)
+			FAR, NEAR: _draw_hanging_bulbs(canvas, which == NEAR)
+			FRONT: _draw_beam(canvas)
 
 
-## Fondo del magazzino: la parete in parallasse (opaca) lo copre tutto tranne
+## Fondo di magazzino e stanza abbandonata: la parete in parallasse (opaca) lo copre tutto tranne
 ## la striscia che lascia scoperta scorrendo; quando è già in texture si
 ## disegna solo quella (sui telefoni ogni strato a tutto schermo costa).
 func _draw_sheet_gap(canvas: CanvasItem) -> void:
+	var color := SHEET if style == "warehouse" else DAMP_WALL
 	if not _baked.has(BACK):
-		canvas.draw_rect(rect, SHEET)
+		canvas.draw_rect(rect, color)
 		return
 	# Una striscia per lato, con qualche px sotto la parete: i bordi della
 	# texture (a mezza risoluzione) possono essere semitrasparenti.
 	var offset := _back.position.x
 	var left := minf(maxf(offset, 0.0) + EDGE_OVERLAP, rect.size.x)
 	var right := minf(maxf(-offset, 0.0) + EDGE_OVERLAP, rect.size.x)
-	canvas.draw_rect(Rect2(rect.position.x, rect.position.y, left, rect.size.y), SHEET)
-	canvas.draw_rect(Rect2(rect.end.x - right, rect.position.y, right, rect.size.y), SHEET)
-	canvas.draw_rect(Rect2(rect.position.x, rect.position.y, rect.size.x, EDGE_OVERLAP), SHEET)
-	canvas.draw_rect(Rect2(rect.position.x, rect.end.y - EDGE_OVERLAP, rect.size.x, EDGE_OVERLAP), SHEET)
+	canvas.draw_rect(Rect2(rect.position.x, rect.position.y, left, rect.size.y), color)
+	canvas.draw_rect(Rect2(rect.end.x - right, rect.position.y, right, rect.size.y), color)
+	canvas.draw_rect(Rect2(rect.position.x, rect.position.y, rect.size.x, EDGE_OVERLAP), color)
+	canvas.draw_rect(Rect2(rect.position.x, rect.end.y - EDGE_OVERLAP, rect.size.x, EDGE_OVERLAP), color)
 
 
 ## Lastre di vetro: sfumatura verticale continua, con piccole differenze tra
@@ -533,26 +659,165 @@ func _draw_ladder(canvas: CanvasItem, base: Vector2, rng: RandomNumberGenerator)
 		canvas.draw_line(bottom_l.lerp(top_l, t), bottom_r.lerp(top_r, t), RACK_NEAR, 6.0)
 
 
-## Pilastri in acciaio a I e trave in alto, davanti agli scaffali.
-func _draw_pillars(canvas: CanvasItem) -> void:
+## Trave in alto, davanti agli scaffali (disegnata direttamente: è una
+## striscia sottile, in texture costerebbe di più).
+func _draw_girder(canvas: CanvasItem) -> void:
 	var top := rect.position.y
-	var x := rect.position.x + PILLAR_STEP / 2.0
-	while x < rect.end.x:
-		var pillar := Rect2(x - PILLAR_WIDTH / 2.0, top, PILLAR_WIDTH, rect.size.y)
-		canvas.draw_rect(pillar, GIRDER)
-		# Ali della trave a I, più chiare, con i rivetti.
-		for edge in [pillar.position.x, pillar.end.x - 8.0]:
-			canvas.draw_rect(Rect2(edge, top, 8.0, rect.size.y), GIRDER_LIGHT)
-		var ry := top + 60.0
-		while ry < rect.end.y:
-			for rx in [pillar.position.x + 4.0, pillar.end.x - 4.0]:
-				canvas.draw_circle(Vector2(rx, ry), 3.0, GIRDER)
-			ry += 60.0
-		# Piastra di base sulla fascia di cemento.
-		canvas.draw_rect(Rect2(pillar.position.x - 10.0, rect.end.y - 24.0, PILLAR_WIDTH + 20.0, 24.0), GIRDER_LIGHT)
-		x += PILLAR_STEP
 	canvas.draw_rect(Rect2(rect.position.x, top, rect.size.x, 40.0), GIRDER)
 	canvas.draw_line(Vector2(rect.position.x, top + 38.0), Vector2(rect.end.x, top + 38.0), GIRDER_LIGHT, 4.0)
+
+
+## Stanza abbandonata: parete umida in parallasse. Prima tutto ciò che sta
+## "sotto" (carta, intonaco, mattoni), poi macchie e crepe sopra.
+func _draw_damp_wall(canvas: CanvasItem) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = pattern
+	var top := rect.position.y
+	var wall := Rect2(rect.position.x, top, rect.size.x, wainscot_y - top)
+	canvas.draw_rect(rect, DAMP_WALL)
+	# Carta da parati: righe larghe e un motivo a rombi, sbiadito.
+	var x := rect.position.x
+	while x < rect.end.x:
+		canvas.draw_rect(Rect2(x, top, minf(STRIPE_STEP / 2.0, rect.end.x - x), wall.size.y), DAMP_STRIPE)
+		x += STRIPE_STEP
+	var diamonds := PackedVector2Array()
+	var dy := top + 70.0
+	var row := 0
+	while dy < wainscot_y - 40.0:
+		var dx := rect.position.x + STRIPE_STEP * (0.75 if row % 2 == 0 else 0.25)
+		while dx < rect.end.x:
+			var d := [Vector2(dx, dy - 14), Vector2(dx + 9, dy), Vector2(dx, dy + 14), Vector2(dx - 9, dy)]
+			for i in 4:
+				diamonds.append_array([d[i], d[(i + 1) % 4]])
+			dx += STRIPE_STEP
+		dy += 90.0
+		row += 1
+	canvas.draw_multiline(diamonds, DAMP_PATTERN, 2.0)
+	# Intonaco scrostato: chiazze irregolari.
+	for i in maxi(2, int(rect.size.x * wall.size.y / 260000.0)):
+		var center := Vector2(rng.randf_range(wall.position.x, wall.end.x), rng.randf_range(top + 80, wainscot_y - 60))
+		var radius := Vector2(rng.randf_range(50, 140), rng.randf_range(35, 90))
+		var patch := PackedVector2Array()
+		for k in 14:
+			var angle := k * TAU / 14.0
+			patch.append(center + Vector2(cos(angle) * radius.x, sin(angle) * radius.y) * rng.randf_range(0.65, 1.1))
+		canvas.draw_colored_polygon(patch, PLASTER)
+		patch.append(patch[0])
+		canvas.draw_polyline(patch, DAMP_STRIPE, 2.0)
+	# Colature d'acqua dall'alto e umidità che risale dalla boiserie.
+	for i in maxi(2, int(rect.size.x / 260.0)):
+		var sx := rng.randf_range(wall.position.x, wall.end.x)
+		var width := rng.randf_range(30, 120)
+		var length := rng.randf_range(150, minf(700, wall.size.y))
+		var clear := Color(STAIN, 0.0)
+		var dark := Color(STAIN, rng.randf_range(0.25, 0.45))
+		canvas.draw_polygon(PackedVector2Array([
+			Vector2(sx, top), Vector2(sx + width, top), Vector2(sx + width * 0.7, top + length), Vector2(sx + width * 0.35, top + length),
+		]), PackedColorArray([dark, dark, clear, clear]))
+	var damp := PackedVector2Array()
+	var damp_colors := PackedColorArray()
+	var step := 40.0
+	var wx := rect.position.x
+	while wx <= rect.end.x + step:
+		var rise := rng.randf_range(60, 200)
+		damp.append_array([Vector2(wx, wainscot_y - rise), Vector2(wx, wainscot_y)])
+		damp_colors.append_array([Color(MOLD, 0.0), Color(MOLD, 0.55)])
+		wx += step
+	for i in range(0, damp.size() - 2, 2):
+		canvas.draw_polygon(PackedVector2Array([damp[i], damp[i + 2], damp[i + 3], damp[i + 1]]),
+				PackedColorArray([damp_colors[i], damp_colors[i + 2], damp_colors[i + 3], damp_colors[i + 1]]))
+	# Crepe lunghe nell'intonaco.
+	for i in maxi(1, int(rect.size.x / 600.0)):
+		var crack := PackedVector2Array([Vector2(rng.randf_range(wall.position.x, wall.end.x), rng.randf_range(top, top + wall.size.y * 0.5))])
+		var angle := rng.randf_range(PI * 0.3, PI * 0.7)
+		for k in rng.randi_range(8, 16):
+			angle += rng.randf_range(-0.5, 0.5)
+			crack.append(crack[crack.size() - 1] + Vector2.from_angle(angle) * rng.randf_range(14, 30))
+		canvas.draw_polyline(crack, WALL_CRACK, 2.5)
+	_draw_rotten_wainscot(canvas, rng)
+
+
+## Boiserie di assi verticali: alcune scurite, alcune spezzate o mancanti.
+func _draw_rotten_wainscot(canvas: CanvasItem, rng: RandomNumberGenerator) -> void:
+	var area := Rect2(rect.position.x, wainscot_y, rect.size.x, rect.end.y - wainscot_y)
+	if not area.has_area():
+		return
+	canvas.draw_rect(area, ROT_WOOD)
+	var x := area.position.x
+	while x < area.end.x:
+		var plank := Rect2(x, area.position.y, minf(PLANK, area.end.x - x), area.size.y)
+		var roll := rng.randf()
+		if roll < 0.12:
+			# Asse mancante: buio dietro, con il bordo superiore spezzato.
+			var stub := rng.randf_range(10, 50)
+			canvas.draw_rect(Rect2(plank.position.x + 3, plank.position.y + stub, plank.size.x - 6, plank.size.y - stub), VOID)
+			canvas.draw_colored_polygon(PackedVector2Array([
+				Vector2(plank.position.x + 3, plank.position.y + stub), Vector2(plank.end.x - 3, plank.position.y + stub),
+				Vector2(plank.end.x - 3, plank.position.y + stub + rng.randf_range(10, 40)),
+				Vector2(plank.position.x + plank.size.x * 0.4, plank.position.y + stub + rng.randf_range(4, 18)),
+				Vector2(plank.position.x + 3, plank.position.y + stub + rng.randf_range(15, 45)),
+			]), ROT_WOOD)
+		elif roll < 0.45:
+			canvas.draw_rect(plank.grow_individual(-3, 0, -3, 0), ROT_WOOD_DARK)
+		canvas.draw_line(Vector2(x, area.position.y), Vector2(x, area.end.y), ROT_WOOD_DARK, 3.0)
+		x += PLANK
+	canvas.draw_rect(Rect2(area.position.x, wainscot_y - 6.0, area.size.x, 12.0), ROT_WOOD_DARK)
+
+
+## File di lampadine spente appese al soffitto, come sagome: quelle lontane
+## piccole, fitte e quasi del colore del muro; quelle vicine più grandi e
+## scure. Alcuni fili hanno solo il portalampada vuoto.
+func _draw_hanging_bulbs(canvas: CanvasItem, near: bool) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = pattern * 2 + (1 if near else 0)
+	var color := HANGING_NEAR if near else HANGING_FAR
+	var scale_factor := 0.5 if near else 0.32
+	var top := rect.position.y + BEAM_HEIGHT
+	var max_drop := minf(wainscot_y - top - 220.0, 620.0 if near else 480.0)
+	if max_drop < 80.0:
+		return
+	var x := rect.position.x + rng.randf_range(40.0, 160.0)
+	var cords := PackedVector2Array()
+	while x < rect.end.x - 40.0:
+		var drop := rng.randf_range(80.0, max_drop)
+		var end := Vector2(x, top + drop)
+		cords.append_array([Vector2(x, top), end])
+		if rng.randf() < 0.2:
+			# Solo il portalampada, la lampadina non c'è più.
+			canvas.draw_rect(Rect2(end.x - 10.0 * scale_factor * 2.0, end.y, 20.0 * scale_factor * 2.0, 26.0 * scale_factor * 2.0), color)
+		else:
+			var tilt := rng.randf_range(-0.15, 0.15)
+			canvas.draw_set_transform(end, PI + tilt, Vector2.ONE * scale_factor)
+			canvas.draw_rect(Rect2(-17, -34, 34, 34), color)
+			canvas.draw_colored_polygon(PackedVector2Array([
+				Vector2(-27, -46), Vector2(27, -46), Vector2(17, -32), Vector2(-17, -32)
+			]), color)
+			canvas.draw_circle(Vector2(0, -68), 38.0, color)
+			canvas.draw_set_transform_matrix(Transform2D.IDENTITY)
+		x += rng.randf_range(160.0, 320.0) if near else rng.randf_range(70.0, 150.0)
+	canvas.draw_multiline(cords, color, 4.0 if near else 2.5)
+
+
+## Trave di legno sotto il soffitto, con le colature d'umidità che scendono.
+func _draw_beam(canvas: CanvasItem) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = pattern * 7
+	var top := rect.position.y
+	canvas.draw_rect(Rect2(rect.position.x, top, rect.size.x, BEAM_HEIGHT), BEAM)
+	canvas.draw_line(Vector2(rect.position.x, top + BEAM_HEIGHT - 2.0), Vector2(rect.end.x, top + BEAM_HEIGHT - 2.0), BEAM_LIGHT, 4.0)
+	# Venature e spaccature del legno.
+	var grain := PackedVector2Array()
+	for i in int(rect.size.x / 120.0):
+		var gx := rng.randf_range(rect.position.x, rect.end.x)
+		var gy := top + rng.randf_range(8, BEAM_HEIGHT - 12)
+		grain.append_array([Vector2(gx, gy), Vector2(gx + rng.randf_range(40, 160), gy + rng.randf_range(-3, 3))])
+	canvas.draw_multiline(grain, BEAM_LIGHT, 1.5)
+	# Colature scure che scendono dalla trave.
+	for i in int(rect.size.x / 200.0):
+		var sx := rng.randf_range(rect.position.x, rect.end.x)
+		var length := rng.randf_range(20, 90)
+		canvas.draw_line(Vector2(sx, top + BEAM_HEIGHT), Vector2(sx, top + BEAM_HEIGHT + length), Color(STAIN, 0.5), rng.randf_range(3, 7))
+		canvas.draw_circle(Vector2(sx, top + BEAM_HEIGHT + length), 3.5, Color(STAIN, 0.5))
 
 
 func _rect_polygon(r: Rect2) -> PackedVector2Array:

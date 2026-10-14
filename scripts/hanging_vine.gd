@@ -48,7 +48,7 @@ const DAMPING := 2.5
 ## Quanto la velocità della lampadina sposta un tralcio che tocca.
 const PUSH := 0.016
 const MAX_SWING := 0.7
-## Sotto questa oscillazione (e velocità) il tralcio è fermo: si smette di ridisegnare.
+## Sotto questa oscillazione (e velocità) il tralcio è fermo: si smette di muoverlo.
 const REST := 0.0005
 ## Foglie che cadono per ogni pixel percorso dalla lampadina tra i tralci.
 const LEAVES_PER_PX := 1.0 / 80.0
@@ -82,6 +82,12 @@ var _rng := RandomNumberGenerator.new()
 ## subito dopo averli generati, da cui _draw riparte.
 var _strands_cache := []
 var _rng_after_strands := 0
+## Un canvas item del RenderingServer per tralcio, disegnato una volta sola a
+## piombo: oscillando si inclina soltanto (vedi _apply_swing). L'ultimo è il
+## ciuffo lungo il bordo, sempre fermo, che copre gli attacchi dei tralci.
+var _pieces: Array[RID] = []
+## Mentre si muove le oscillazioni si mostrano un tick di fisica sì e uno no (30 Hz).
+var _skip_tick := false
 
 
 func _ready() -> void:
@@ -105,6 +111,12 @@ func _ready() -> void:
 	_rustle = PlantRustle.new()
 	add_child(_rustle)
 	LevelKit.process_on_screen(self, Rect2(-length / 2.0, 0, width + length, length))
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		for item in _pieces:
+			RenderingServer.free_rid(item)
 
 
 func _physics_process(delta: float) -> void:
@@ -154,7 +166,23 @@ func _physics_process(delta: float) -> void:
 			return
 		_swing.fill(0.0)
 		_swing_velocity.fill(0.0)
-	queue_redraw()
+	else:
+		# Ancora in movimento: le oscillazioni si mostrano a 30 Hz. Quando torna
+		# a riposo invece subito, così i tralci restano a piombo.
+		_skip_tick = not _skip_tick
+		if _skip_tick:
+			return
+	_apply_swing()
+
+
+## Mostra le oscillazioni attuali: ogni tralcio si inclina attorno al bordo
+## (y = 0) e il punto all'altezza y si sposta di -sin(oscillazione) · y, come
+## lo cerca _physics_process.
+func _apply_swing() -> void:
+	for i in mini(_swing.size(), _pieces.size() - 1):
+		var swing := _swing[i]
+		RenderingServer.canvas_item_set_transform(_pieces[i],
+				Transform2D(Vector2.RIGHT, Vector2(-sin(swing), cos(swing)), Vector2.ZERO))
 
 
 ## Tralci come {x, length, phase}, calcolati una volta sola. Dopo la chiamata
@@ -200,6 +228,8 @@ func _strand_points(strand: Dictionary, swing: float) -> PackedVector2Array:
 	return points
 
 
+## Disegna il rampicante a piombo: il fusto lungo il bordo sul nodo stesso,
+## tralci e ciuffo nei pezzi. Si rifà solo quando cambia la forma.
 func _draw() -> void:
 	var strands := _strands()
 	var shape := PackedVector2Array(IVY if leaf_style == "ivy" else HEART)
@@ -211,34 +241,40 @@ func _draw() -> void:
 	for k in edge_count + 1:
 		edge.append(Vector2(width * k / edge_count, 3.0 + sin(k * 1.7 + pattern) * 2.5))
 	draw_polyline(edge, GroundPlant.STEM, 3.0, true)
+	for k in range(strands.size() + 1, _pieces.size()):
+		RenderingServer.free_rid(_pieces[k])
+	_pieces.resize(strands.size() + 1)
+	for k in _pieces.size():
+		_pieces[k] = GroundPlant.piece_item(self, _pieces[k], get_canvas_item(), k)
 	for i in strands.size():
-		var strand: Dictionary = strands[i]
-		var swing: float = _swing[i] if i < _swing.size() else 0.0
-		var points := _strand_points(strand, swing)
-		draw_polyline(points, GroundPlant.STEM, 2.0, true)
+		var item := _pieces[i]
+		var points := _strand_points(strands[i], 0.0)
+		RenderingServer.canvas_item_add_polyline(item, points, PackedColorArray([GroundPlant.STEM]), 2.0, true)
 		for j in range(1, points.size()):
 			var t := float(j) / (points.size() - 1)
 			var dir := (points[j] - points[j - 1]).normalized()
 			var side := 1.0 if j % 2 == 0 else -1.0
 			var size := leaf_size * lerpf(1.0, 0.6, t) * _rng.randf_range(0.85, 1.15)
-			_draw_leaf(shape, points[j], dir.angle() + side * 0.9, size, colors[_rng.randi() % colors.size()])
+			_draw_leaf(item, shape, points[j], dir.angle() + side * 0.9, size, colors[_rng.randi() % colors.size()])
 			if flowers and _rng.randf() < 0.18:
-				_draw_flower(points[j] + Vector2(-dir.y, dir.x) * side * -5.0)
+				_draw_flower(item, points[j] + Vector2(-dir.y, dir.x) * side * -5.0)
 	# Ciuffo di foglie lungo il bordo che copre gli attacchi dei tralci.
+	var tuft_item := _pieces[strands.size()]
 	var tuft := 0.0
 	while tuft < width:
 		var angle := PI / 2.0 + _rng.randf_range(-1.3, 1.3)
-		_draw_leaf(shape, Vector2(tuft, 4.0), angle, leaf_size * _rng.randf_range(0.8, 1.1), colors[_rng.randi() % colors.size()])
+		_draw_leaf(tuft_item, shape, Vector2(tuft, 4.0), angle, leaf_size * _rng.randf_range(0.8, 1.1), colors[_rng.randi() % colors.size()])
 		tuft += _rng.randf_range(8.0, 14.0)
+	_apply_swing()
 
 
-func _draw_leaf(shape: PackedVector2Array, at: Vector2, angle: float, size: float, color: Color) -> void:
+func _draw_leaf(item: RID, shape: PackedVector2Array, at: Vector2, angle: float, size: float, color: Color) -> void:
 	var xform := Transform2D(angle, Vector2(size, size), 0.0, at)
-	draw_colored_polygon(xform * shape, color)
-	draw_line(at, xform * Vector2(0.8, 0), GroundPlant.VEIN, 1.0)
+	RenderingServer.canvas_item_add_polygon(item, xform * shape, PackedColorArray([color]))
+	RenderingServer.canvas_item_add_line(item, at, xform * Vector2(0.8, 0), GroundPlant.VEIN, 1.0)
 
 
-func _draw_flower(at: Vector2) -> void:
+func _draw_flower(item: RID, at: Vector2) -> void:
 	for k in 5:
-		draw_circle(at + Vector2.from_angle(k * TAU / 5.0) * 3.0, 2.6, FLOWER)
-	draw_circle(at, 1.8, FLOWER_CENTER)
+		RenderingServer.canvas_item_add_circle(item, at + Vector2.from_angle(k * TAU / 5.0) * 3.0, 2.6, FLOWER)
+	RenderingServer.canvas_item_add_circle(item, at, 1.8, FLOWER_CENTER)

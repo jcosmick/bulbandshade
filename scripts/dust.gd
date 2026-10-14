@@ -38,9 +38,8 @@ func _ready() -> void:
 	z_index = -3
 	if Engine.is_editor_hint():
 		return
-	var light_only := CanvasItemMaterial.new()
-	light_only.light_mode = CanvasItemMaterial.LIGHT_MODE_LIGHT_ONLY
-	material = light_only
+	material = LevelKit.shared_material(CanvasItemMaterial.BLEND_MODE_MIX, CanvasItemMaterial.LIGHT_MODE_LIGHT_ONLY)
+	LevelKit.prewarm(self)
 	_beam_visual = LevelKit.make_overlay(self, true, 2)
 	_beam_visual.draw.connect(_draw_beam_motes)
 	for i in amount:
