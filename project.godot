@@ -41,6 +41,10 @@ window/handheld/orientation=1
 
 pointing/emulate_touch_from_mouse=true
 
+[physics]
+
+common/physics_interpolation=true
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

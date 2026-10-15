@@ -20,6 +20,10 @@ var brightness := DEFAULT_BRIGHTNESS
 
 
 func _ready() -> void:
+	# Interpolazione fisica attiva nel progetto ma spenta per tutti: la accende
+	# solo la lampadina in gioco (game.gd). Il resto si muove in _process e
+	# interpolato andrebbe a scatti o in ritardo.
+	get_tree().root.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	var config := ConfigFile.new()
 	if config.load(SAVE_PATH) == OK:
 		music_volume = clampf(float(config.get_value("audio", "music", DEFAULT_VOLUME)), 0.0, 1.0)

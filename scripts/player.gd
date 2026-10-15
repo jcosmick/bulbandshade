@@ -97,6 +97,8 @@ var _walk_blend := 0.0
 var _socketed := false
 var _facing := 1.0
 var _squash := Vector2.ONE
+## Posizione all'inizio dell'ultimo passo fisico (vedi visual_position()).
+var _prev_physics_position := Vector2.ZERO
 var _glow: PointLight2D
 var _flash_light: PointLight2D
 var _flash_tween: Tween
@@ -220,6 +222,7 @@ func respawn(at: Vector2) -> void:
 	controls_enabled = true
 	set_physics_process(true)
 	global_position = at
+	snap_interpolation()
 	velocity = Vector2.ZERO
 	_flash_cooldown = 0.0
 	_squash = Vector2(0.7, 1.3)
@@ -230,9 +233,24 @@ func flash_charge() -> float:
 	return 1.0 - clampf(_flash_cooldown / flash_cooldown, 0.0, 1.0)
 
 
+## Posizione disegnata: con l'interpolazione fisica la lampadina si vede tra
+## il passo fisico precedente e l'ultimo, e la telecamera deve seguire questa.
+func visual_position() -> Vector2:
+	if not is_physics_interpolated_and_enabled() or not is_physics_processing():
+		return global_position
+	return _prev_physics_position.lerp(global_position, Engine.get_physics_interpolation_fraction())
+
+
+## Dopo un teletrasporto: niente scivolata interpolata dal punto vecchio.
+func snap_interpolation() -> void:
+	_prev_physics_position = global_position
+	reset_physics_interpolation()
+
+
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
+	_prev_physics_position = global_position
 	var direction := Input.get_axis("move_left", "move_right") if controls_enabled else 0.0
 	if god_mode:
 		var vertical := Input.get_axis("jump", "move_down") if controls_enabled else 0.0
@@ -371,6 +389,8 @@ func enter_socket(target: Vector2) -> Tween:
 	collision_layer = 0
 	collision_mask = 0
 	_socketed = true
+	# Il tween la sposta a ogni frame: interpolata andrebbe a scatti.
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	var tween := create_tween()
 	# Salto sopra il portalampada, ben allineata e dritta.
 	tween.tween_property(self, "global_position", target + Vector2(0, -80), 0.3) \

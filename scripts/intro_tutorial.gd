@@ -103,6 +103,7 @@ func _end() -> void:
 	var player: Player = game.player
 	# Il giocatore arriva cadendo dall'alto sul punto di partenza.
 	player.global_position += Vector2(0, -player_drop)
+	player.snap_interpolation()
 	player.visible = true
 	player.set_physics_process(true)
 

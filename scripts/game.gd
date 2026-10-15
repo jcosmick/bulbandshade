@@ -118,6 +118,9 @@ func load_level(index: int) -> void:
 	add_child(level)
 	Music.play_song(level.music)
 	player = level.get_node("Player")
+	# Fisica a 60 Hz, schermo magari a 144: interpolata, la lampadina non scatta.
+	player.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
+	player.snap_interpolation()
 	_focus_y = player.global_position.y
 	goal = level.get_node("Goal")
 	player.flashed.connect(_on_player_flashed)
@@ -464,7 +467,7 @@ func _layout() -> void:
 ## Aggiorna l'altezza seguita: a terra è quella della lampadina; in aria resta
 ## ferma finché non si sale oltre CAMERA_JUMP_MARGIN o si scende sotto.
 func _update_focus_y() -> void:
-	var y := player.global_position.y
+	var y := player.visual_position().y
 	if player.is_on_floor() or y > _focus_y:
 		_focus_y = y
 	elif y < _focus_y - CAMERA_JUMP_MARGIN:
@@ -475,7 +478,7 @@ func _update_focus_y() -> void:
 ## gioco (sopra i controlli) senza mostrare oltre i bordi del livello.
 func _camera_target() -> Vector2:
 	var controls := CONTROLS_HEIGHT / _camera.zoom.y
-	var focus := camera_focus.global_position if is_instance_valid(camera_focus) else Vector2(player.global_position.x, _focus_y)
+	var focus := camera_focus.global_position if is_instance_valid(camera_focus) else Vector2(player.visual_position().x, _focus_y)
 	return _clamp_camera(focus + Vector2(0, controls / 2.0))
 
 
