@@ -145,7 +145,7 @@ func _run() -> void:
 
 ## Gioco libero: il livello si gioca normalmente e si registrano i frame lenti.
 func _play_level(number: int) -> Dictionary:
-	game.load_level(number - 1)
+	await game.load_level(number - 1)
 	var flashes := []
 	var on_flash := func(_origin: Vector2, _radius: float) -> void:
 		_last_flash_ms = Time.get_ticks_msec()
@@ -217,7 +217,7 @@ func _play_level(number: int) -> Dictionary:
 ## Misura il livello completo, poi una volta per sistema disattivato, poi di
 ## nuovo completo (per vedere quanto è cambiato il telefono nel frattempo).
 func _profile_level(number: int) -> Dictionary:
-	game.load_level(number - 1)
+	await game.load_level(number - 1)
 	var systems: Array = ["flash", "shadows", "hud"]
 	systems.append_array(_groups(game.level).keys())
 	var phases: Array[Dictionary] = []
@@ -245,7 +245,7 @@ func _profile_level(number: int) -> Dictionary:
 
 ## Carica il livello, disattiva il sistema indicato ("" = nessuno) e misura.
 func _measure_level(number: int, disabled: String, shake := false) -> Dictionary:
-	game.load_level(number - 1)
+	await game.load_level(number - 1)
 	# Le ombre dei flash precedenti restano in coda fino al frame dopo.
 	await get_tree().process_frame
 	_flashes = disabled != "flash"

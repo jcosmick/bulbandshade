@@ -39,7 +39,7 @@ func _run() -> void:
 	var game: Node = load("res://scenes/game.tscn").instantiate()
 	vp.add_child(game)
 	for i in Progress.LEVELS.size():
-		game.load_level(i)
+		await game.load_level(i)
 		await _wait(0.8)
 		await _shot("L%d_a_dark" % (i + 1))
 		game.player.try_flash(true)

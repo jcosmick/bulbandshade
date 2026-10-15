@@ -469,7 +469,7 @@ func _edge_menu_and_other_level() -> void:
 func _fresh() -> void:
 	for action in ["move_left", "move_right", "jump", "flash", "restart", "menu"]:
 		Input.action_release(action)
-	game.load_level(LEVEL_INDEX)
+	await game.load_level(LEVEL_INDEX)
 	_deaths = 0
 	_connect_player()
 	await _frames(3)

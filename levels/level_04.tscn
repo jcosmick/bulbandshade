@@ -98,6 +98,7 @@ pipe_length = 20.0
 position = Vector2(1370, 2420)
 script = ExtResource("3")
 size = Vector2(140, 160)
+type = 1
 casts_shadow = true
 
 [node name="WindowShutterLow" type="Node2D" parent="." unique_id=1109782024]
@@ -122,6 +123,7 @@ script = ExtResource("9")
 position = Vector2(1700, 1870)
 script = ExtResource("3")
 size = Vector2(120, 80)
+type = 1
 casts_shadow = true
 chain_length = 1190.0
 
@@ -149,6 +151,7 @@ pipe_length = 20.0
 position = Vector2(950, 1630)
 script = ExtResource("3")
 size = Vector2(100, 100)
+type = 1
 casts_shadow = true
 
 [node name="LedgeLeft" type="StaticBody2D" parent="." unique_id=1440477749]
@@ -175,6 +178,7 @@ size = Vector2(100, 120)
 position = Vector2(470, 1350)
 script = ExtResource("3")
 size = Vector2(100, 100)
+type = 1
 casts_shadow = true
 
 [node name="LedgeUpper" type="StaticBody2D" parent="." unique_id=916588634]
@@ -190,6 +194,7 @@ script = ExtResource("9")
 position = Vector2(1430, 900)
 script = ExtResource("3")
 size = Vector2(100, 80)
+type = 1
 casts_shadow = true
 chain_length = 780.0
 

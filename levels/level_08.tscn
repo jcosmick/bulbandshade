@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://cgr4ipmwfnphq" path="res://scripts/level.gd" id="1"]
 [ext_resource type="Script" uid="uid://cfb54eli4ce7p" path="res://scripts/room_background.gd" id="2"]
 [ext_resource type="Script" uid="uid://c7ngnkpr6cikx" path="res://scripts/block.gd" id="3"]
+[ext_resource type="PackedScene" path="res://prefabs/parallax/parallax_front.tscn" id="3_fglid"]
 [ext_resource type="Script" uid="uid://kt1g27e60883" path="res://scripts/player.gd" id="4"]
 [ext_resource type="Script" uid="uid://bj4aruw1g0xq8" path="res://scripts/goal_lamp.gd" id="5"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/block.tscn" id="6_fenrf"]
@@ -12,22 +13,23 @@
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/crate.tscn" id="11_ck2xc"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/glass_pane.tscn" id="12_tir3y"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/tall_crate.tscn" id="14_8symd"]
-[ext_resource type="PackedScene" path="res://prefabs/props/ground_plant.tscn" id="14_u7eqt"]
+[ext_resource type="PackedScene" path="res://prefabs/props/atmosphere/ground_plant.tscn" id="14_u7eqt"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/push_box.tscn" id="15_1yggu"]
-[ext_resource type="PackedScene" path="res://prefabs/props/vent.tscn" id="16_7kdks"]
-[ext_resource type="PackedScene" path="res://prefabs/props/vine.tscn" id="17_f4orn"]
-[ext_resource type="PackedScene" path="res://prefabs/props/sack_pile.tscn" id="18_0gjl2"]
-[ext_resource type="PackedScene" path="res://prefabs/props/barrel.tscn" id="19_fs5cg"]
-[ext_resource type="PackedScene" path="res://prefabs/props/cobweb_spider.tscn" id="20_0gjl2"]
-[ext_resource type="PackedScene" path="res://prefabs/props/jar.tscn" id="21_fs5cg"]
+[ext_resource type="PackedScene" path="res://prefabs/props/industrial/vent.tscn" id="16_7kdks"]
+[ext_resource type="PackedScene" path="res://prefabs/props/hanging/vine.tscn" id="17_f4orn"]
+[ext_resource type="PackedScene" path="res://prefabs/props/containers/sack_pile.tscn" id="18_0gjl2"]
+[ext_resource type="PackedScene" path="res://prefabs/props/containers/barrel.tscn" id="19_fs5cg"]
+[ext_resource type="PackedScene" path="res://prefabs/props/atmosphere/cobweb_spider.tscn" id="20_0gjl2"]
+[ext_resource type="PackedScene" path="res://prefabs/props/containers/jar.tscn" id="21_fs5cg"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/skylight.tscn" id="22_fs5cg"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/water_drip.tscn" id="23_oyse4"]
 [ext_resource type="PackedScene" path="res://prefabs/gameplay/checkpoint.tscn" id="24_oyse4"]
-[ext_resource type="PackedScene" path="res://prefabs/props/pipe.tscn" id="24_tp4tc"]
+[ext_resource type="PackedScene" path="res://prefabs/props/industrial/pipe.tscn" id="24_tp4tc"]
 [ext_resource type="PackedScene" path="res://prefabs/gizmos/jump_arc.tscn" id="25_i0ocl"]
 [ext_resource type="PackedScene" path="res://prefabs/gameplay/mini_bulb.tscn" id="26_174un"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/hanging_crate.tscn" id="27_174un"]
-[ext_resource type="PackedScene" path="res://prefabs/props/wall_socket.tscn" id="28_8rf2p"]
+[ext_resource type="PackedScene" path="res://prefabs/props/electrical/wall_socket.tscn" id="28_8rf2p"]
+[ext_resource type="PackedScene" path="res://prefabs/props/lighting/neon_light.tscn" id="30_l45uk"]
 
 [node name="LevelNew2" type="Node2D" unique_id=1709908472]
 script = ExtResource("1")
@@ -42,6 +44,53 @@ script = ExtResource("2")
 style = "greenhouse"
 rect = Rect2(0, 0, 4090, 1520)
 pattern = 9
+
+[node name="ParallaxFront" parent="." unique_id=1268008155 instance=ExtResource("3_fglid")]
+scroll_scale = Vector2(1.5, 1)
+_depth = 1.5
+
+[node name="GroundPlant2" parent="ParallaxFront" unique_id=1183057896 instance=ExtResource("14_u7eqt")]
+position = Vector2(3005.0002, 1579.0001)
+scale = Vector2(1.5, 1.5)
+kind = "monstera"
+height = 260.0
+pot = "planter"
+pattern = 2
+disable_interaction = true
+
+[node name="GroundPlant4" parent="ParallaxFront" unique_id=1811131949 instance=ExtResource("14_u7eqt")]
+position = Vector2(1049, 1710)
+scale = Vector2(1.5, 1.5)
+kind = "banana"
+pot = "none"
+disable_interaction = true
+
+[node name="GroundPlant5" parent="ParallaxFront" unique_id=2066508161 instance=ExtResource("14_u7eqt")]
+position = Vector2(1903, 1715)
+scale = Vector2(1.5, 1.5)
+kind = "banana"
+pot = "none"
+pattern = 3
+disable_interaction = true
+
+[node name="Vine2" parent="ParallaxFront" unique_id=1851120012 instance=ExtResource("17_f4orn")]
+position = Vector2(-28, -52)
+scale = Vector2(1.5, 1.5)
+width = 500.0
+density = 5.0
+leaf_style = "heart"
+pattern = -3
+disable_interaction = true
+
+[node name="Vine" parent="ParallaxFront" unique_id=376579056 instance=ExtResource("17_f4orn")]
+position = Vector2(1459.9999, -13.000001)
+scale = Vector2(1.4, 1.4)
+width = 800.0
+length = 230.0
+density = 4.5
+leaf_style = "heart"
+pattern = 5
+disable_interaction = true
 
 [node name="Ceiling" type="StaticBody2D" parent="." unique_id=1111311500]
 position = Vector2(2040, 40)
@@ -132,6 +181,7 @@ size = Vector2(600, 40)
 position = Vector2(1122, 255.00006)
 scale = Vector2(1, 0.4800012)
 size = Vector2(80, 1050)
+type = 0
 casts_shadow = false
 
 [node name="PushBox" parent="." unique_id=1004277573 instance=ExtResource("15_1yggu")]
@@ -263,7 +313,8 @@ position = Vector2(2588, 275)
 position = Vector2(2189, 605)
 
 [node name="GlassPane5" parent="." unique_id=81738309 instance=ExtResource("12_tir3y")]
-position = Vector2(3562, 1028)
+position = Vector2(3588, 1028)
+size = Vector2(170, 30)
 
 [node name="Crate3" parent="." unique_id=620418413 instance=ExtResource("11_ck2xc")]
 position = Vector2(2148, 544)
@@ -307,6 +358,16 @@ kind = "banana"
 height = 420.0
 pot_width = 80.0
 
+[node name="GroundPlant7" parent="." unique_id=1582779227 instance=ExtResource("14_u7eqt")]
+modulate = Color(0.82947975, 0.8294798, 0.82947975, 1)
+z_index = -5
+position = Vector2(3450, 1423)
+kind = "fern"
+height = 130.0
+pot = "planter"
+pot_width = 80.0
+pattern = -11
+
 [node name="Jar2" parent="." unique_id=1238149875 instance=ExtResource("21_fs5cg")]
 z_index = -4
 position = Vector2(3394, 1420)
@@ -317,7 +378,8 @@ position = Vector2(3434, 1420)
 
 [node name="Vine3" parent="." unique_id=912071470 instance=ExtResource("17_f4orn")]
 z_index = -5
-position = Vector2(3463, 1042)
+position = Vector2(3504, 1040)
+width = 170.0
 length = 120.0
 density = 4.0
 
@@ -367,3 +429,18 @@ kind = "cactus"
 height = 120.0
 pot = "planter"
 pot_width = 45.0
+
+[node name="NeonLight" parent="." unique_id=2080893252 instance=ExtResource("30_l45uk")]
+z_index = -6
+position = Vector2(3268, 80)
+mode = "steady"
+
+[node name="NeonLight2" parent="." unique_id=1206148085 instance=ExtResource("30_l45uk")]
+z_index = -6
+position = Vector2(877, 509)
+mode = "steady"
+
+[node name="NeonLight3" parent="." unique_id=99302279 instance=ExtResource("30_l45uk")]
+z_index = -6
+position = Vector2(2981, 865)
+mode = "steady"

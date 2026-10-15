@@ -4,6 +4,10 @@ extends PointLight2D
 ## ogni pixel che tocca, e sui telefoni costa molto (sfondo a tutto schermo).
 
 
+func _enter_tree() -> void:
+	add_to_group(LevelKit.LIGHTS_GROUP)
+
+
 func _process(_delta: float) -> void:
 	var on := energy > 0.0
 	if enabled != on:

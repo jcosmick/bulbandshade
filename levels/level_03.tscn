@@ -71,6 +71,7 @@ size = Vector2(320, 55)
 position = Vector2(630, 2620)
 script = ExtResource("3")
 size = Vector2(140, 160)
+type = 1
 casts_shadow = true
 
 [node name="FloorBLeft" type="StaticBody2D" parent="."]
@@ -91,6 +92,7 @@ script = ExtResource("9")
 position = Vector2(840, 2230)
 script = ExtResource("3")
 size = Vector2(120, 100)
+type = 1
 casts_shadow = true
 
 [node name="WindowB" type="Node2D" parent="."]
@@ -114,6 +116,7 @@ script = ExtResource("9")
 position = Vector2(480, 1730)
 script = ExtResource("3")
 size = Vector2(120, 100)
+type = 1
 casts_shadow = true
 chain_length = 900.0
 
@@ -130,6 +133,7 @@ script = ExtResource("9")
 position = Vector2(800, 1470)
 script = ExtResource("3")
 size = Vector2(120, 100)
+type = 1
 casts_shadow = true
 
 [node name="WindowD" type="Node2D" parent="."]
@@ -170,6 +174,7 @@ size = Vector2(100, 120)
 position = Vector2(330, 1070)
 script = ExtResource("3")
 size = Vector2(100, 100)
+type = 1
 casts_shadow = true
 
 [node name="LedgeGoal" type="StaticBody2D" parent="."]

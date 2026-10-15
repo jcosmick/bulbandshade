@@ -126,6 +126,92 @@ const BAKE_SCALE := {
 	"warehouse": {BACK: 0.5, NEAR: 0.5},
 	"abandoned": {BACK: 0.5, FAR: 0.5, NEAR: 0.5, FRONT: 0.5},
 }
+## Serra in gioco: rettangoli illuminati compongono vetro, piani di piante
+## (spostati della parallasse) e primo piano, letti dalle loro texture. Sui
+## telefoni il costo era il calcolo delle luci, ripetuto per ogni strato
+## illuminato sovrapposto: così si fa una volta per pixel. La fusione è quella
+## degli strati separati (texture con alpha premoltiplicato una sopra l'altra).
+## Sul Pixel 4a, in uno shader illuminato, le letture di texture con uv
+## calcolati nel fragment costavano quasi quanto gli strati di prima: gli uv si
+## calcolano nel vertex shader (letture non dipendenti, la GPU le anticipa) e
+## ogni fascia legge solo i suoi strati (vedi _use_greenhouse_shader): GLASS e
+## FOLIAGE sono definiti solo dove servono.
+const GREENHOUSE_SHADER := """
+shader_type canvas_item;
+{defines}
+// Primo piano a piena risoluzione: nearest come il disegno vettoriale.
+uniform sampler2D front_tex : filter_nearest, repeat_disable;
+// Zona del fondo coperta da ciascuna texture (size 0 = strato vuoto).
+uniform vec4 front_rect;
+varying highp vec2 front_uv;
+#ifdef GLASS
+uniform sampler2D glass_tex : filter_linear, repeat_disable;
+uniform vec4 glass_rect;
+varying highp vec2 glass_uv;
+#endif
+#ifdef FOLIAGE
+uniform sampler2D far_tex : filter_linear, repeat_disable;
+uniform sampler2D near_tex : filter_linear, repeat_disable;
+uniform vec4 far_rect;
+uniform vec4 near_rect;
+uniform float far_shift;
+uniform float near_shift;
+varying highp vec2 far_uv;
+varying highp vec2 near_uv;
+#endif
+
+// Uv di p nella zona r, o fuori da [0, 1] se lo strato è vuoto.
+highp vec2 layer_uv(vec4 r, highp vec2 p) {
+	return r.z > 0.0 ? (p - r.xy) / r.zw : vec2(-1.0);
+}
+
+void vertex() {
+	front_uv = layer_uv(front_rect, VERTEX);
+#ifdef GLASS
+	glass_uv = layer_uv(glass_rect, VERTEX);
+#endif
+#ifdef FOLIAGE
+	far_uv = layer_uv(far_rect, VERTEX - vec2(far_shift, 0.0));
+	near_uv = layer_uv(near_rect, VERTEX - vec2(near_shift, 0.0));
+#endif
+}
+
+// 1 dentro la texture, 0 fuori (lì lo strato non disegna niente).
+float inside(highp vec2 uv) {
+	return step(0.0, uv.x) * step(0.0, uv.y) * step(uv.x, 1.0) * step(uv.y, 1.0);
+}
+
+vec3 over(vec3 under, vec4 t) {
+	return t.rgb + under * (1.0 - t.a);
+}
+
+void fragment() {
+	vec3 col = vec3(0.0);
+#ifdef GLASS
+	col = texture(glass_tex, glass_uv).rgb * inside(glass_uv);
+#endif
+#ifdef FOLIAGE
+	col = over(col, texture(far_tex, far_uv) * inside(far_uv));
+	col = over(col, texture(near_tex, near_uv) * inside(near_uv));
+#endif
+	col = over(col, texture(front_tex, front_uv) * inside(front_uv));
+	COLOR = vec4(col, 1.0);
+}
+"""
+
+## Lato dei riquadri in cui si divide il fondo della serra in gioco.
+const GREENHOUSE_TILE := 128.0
+## Sul Pixel 4a un pixel illuminato da una luce con ombre costa molto più di uno
+## illuminato senza (lo shader è un altro), anche se lì non cade nessuna ombra:
+## col flash acceso è tutto lo sfondo. Ogni luce con ombre ha quindi un gemello
+## identico senza ombre, e i riquadri dove sicuramente non arriva un'ombra
+## (vedi _update_greenhouse_lights) prendono il gemello al posto della luce.
+## Bit di light mask dei riquadri: le luci senza ombre illuminano anche
+## GREENHOUSE_BG_MASK, i gemelli solo GREENHOUSE_TWIN_MASK.
+const GREENHOUSE_BG_MASK := 1 << 10
+const GREENHOUSE_TWIN_MASK := 1 << 11
+## Margine (px) attorno ai riquadri per la sfumatura (PCF) dei bordi d'ombra.
+const GREENHOUSE_SHADOW_MARGIN := 8.0
 ## Lato (texel) dei riquadri in cui si dividono le texture degli strati: si
 ## disegnano solo quelli non vuoti.
 const BAKE_TILE := 64
@@ -160,6 +246,17 @@ var _baked := {}
 ## strato disegna qualcosa (le piante stanno in una fascia vicino al pavimento,
 ## il resto del rettangolo trasparente costerebbe comunque alla GPU).
 var _baked_rect := {}
+## Solo serra in gioco: true quando il fondo è passato ai riquadri col
+## GREENHOUSE_SHADER (gli strati sono in texture).
+var _greenhouse := false
+## Materiali della fascia con le piante (da aggiornare con la parallasse).
+var _foliage_materials: Array[ShaderMaterial] = []
+## Riquadri del fondo per colonna: [nodo, rettangolo nel fondo].
+var _tile_columns: Array = []
+## Luce con ombre -> gemello senza ombre.
+var _twins := {}
+## Occluder di luce del livello (aggiornati da node_added).
+var _occluders: Array[LightOccluder2D] = []
 ## Strato -> riquadri non vuoti della texture: [rettangolo nel fondo,
 ## rettangolo nella texture]. Si disegnano solo quelli (vedi _store_baked).
 var _baked_tiles := {}
@@ -219,10 +316,228 @@ func _bake() -> void:
 		var layer := _layer(which)
 		layer.material = premultiplied
 		layer.queue_redraw()
+	if style == "greenhouse":
+		_use_greenhouse_shader()
 	# Magazzino: ora che la parete è in texture il fondo disegna solo i bordi.
 	queue_redraw()
 	# Serra: il velo ora è dentro le piante.
 	_frost.queue_redraw()
+
+
+## Serra: da qui in poi il fondo è fatto di rettangoli col GREENHOUSE_SHADER e
+## gli strati separati non si disegnano più. Tre fasce orizzontali: sopra le
+## piante (vetro e telaio), le piante, il muretto (solo il primo piano, opaco).
+func _use_greenhouse_shader() -> void:
+	var params := {
+		"front_rect": Vector4(rect.position.x, rect.position.y, rect.size.x, rect.size.y),
+	}
+	var band_top := wainscot_y
+	for which: int in [BASE, FAR, NEAR]:
+		var prefix: String = {BASE: "glass", FAR: "far", NEAR: "near"}[which]
+		var area := Rect2()
+		if _baked.get(which) != null:
+			area = _baked_rect[which]
+			params[prefix + "_tex"] = _baked[which]
+			if which != BASE:
+				band_top = minf(band_top, area.position.y)
+		params[prefix + "_rect"] = Vector4(area.position.x, area.position.y, area.size.x, area.size.y)
+	# Il confine cade su una traversa del telaio, che copre l'attacco tra il
+	# vetro nel primo piano e quello in texture.
+	band_top = rect.position.y + floorf((band_top - rect.position.y) / CELL) * CELL
+	band_top = clampf(band_top, rect.position.y, wainscot_y)
+	params["front_tex"] = _bake_greenhouse_front(band_top)
+	var bands := [
+		[rect.position.y, band_top, ""],
+		[band_top, wainscot_y, "#define GLASS\n#define FOLIAGE"],
+		[wainscot_y, rect.end.y, ""],
+	]
+	# Il motore compila a parte la versione illuminata con luci che la toccano
+	# (con e senza ombre): due luci invisibili sul pixel di prewarm al centro
+	# dello schermo, altrimenti la compilazione blocca il gioco più avanti.
+	var center := get_viewport().get_canvas_transform().affine_inverse() * (get_viewport_rect().size / 2.0)
+	for shadows in [false, true]:
+		var light := PointLight2D.new()
+		light.texture = LevelKit.light_texture()
+		light.energy = 0.001
+		light.shadow_enabled = shadows
+		light.shadow_filter = Light2D.SHADOW_FILTER_PCF5
+		add_child(light, false, Node.INTERNAL_MODE_BACK)
+		light.global_position = center
+		get_tree().create_timer(0.5).timeout.connect(light.queue_free)
+	for band: Array in bands:
+		if band[1] <= band[0]:
+			continue
+		var shader := Shader.new()
+		shader.code = GREENHOUSE_SHADER.replace("{defines}", band[2])
+		var band_material := ShaderMaterial.new()
+		band_material.shader = shader
+		for key: String in params:
+			band_material.set_shader_parameter(key, params[key])
+		if "FOLIAGE" in band[2]:
+			_foliage_materials.append(band_material)
+		# Riquadri: Godot sceglie le luci di ogni oggetto dal suo rettangolo,
+		# così ogni pixel calcola solo le luci che toccano il suo riquadro.
+		var first := true
+		var y: float = band[0]
+		while y < band[1]:
+			var x := rect.position.x
+			while x < rect.end.x:
+				var tile := Node2D.new()
+				tile.material = band_material
+				var area := Rect2(x, y, minf(GREENHOUSE_TILE, rect.end.x - x), minf(GREENHOUSE_TILE, band[1] - y))
+				tile.draw.connect(func() -> void: tile.draw_rect(area, Color.WHITE))
+				add_child(tile, false, Node.INTERNAL_MODE_BACK)
+				var column := floori((x - rect.position.x) / GREENHOUSE_TILE)
+				while _tile_columns.size() <= column:
+					_tile_columns.append([])
+				_tile_columns[column].append([tile, area])
+				# Shader compilato subito, non quando la fascia entra in vista.
+				if first:
+					LevelKit.prewarm(tile)
+					first = false
+				x += GREENHOUSE_TILE
+			y += GREENHOUSE_TILE
+	_greenhouse = true
+	for layer in [_far, _near, _frost, _front]:
+		layer.visible = false
+	_update_greenhouse_shift()
+	for node: LightOccluder2D in get_tree().root.find_children("*", "LightOccluder2D", true, false):
+		_occluders.append(node)
+	get_tree().node_added.connect(_on_node_added)
+	# Subito prima di disegnare: luci, occluder e telecamera sono al loro posto.
+	RenderingServer.frame_pre_draw.connect(_update_greenhouse_lights)
+
+
+## Primo piano della serra a piena risoluzione (nitido come il disegno
+## vettoriale) e, sopra above_y dove davanti non ci sono piante, col vetro sotto:
+## lì basta questa texture, opaca. La SubViewport resta e la sua texture si usa
+## direttamente: rileggerla costerebbe troppo per una texture così grande.
+func _bake_greenhouse_front(above_y: float) -> Texture2D:
+	var factor := minf(1.0, MAX_TEXTURE / maxf(rect.size.x, rect.size.y))
+	var front := SubViewport.new()
+	front.size = Vector2i((rect.size * factor).ceil())
+	front.transparent_bg = true
+	front.disable_3d = true
+	front.render_target_update_mode = SubViewport.UPDATE_ONCE
+	for which: int in [BASE, FRONT]:
+		var canvas := Node2D.new()
+		canvas.transform = Transform2D(0.0, Vector2(factor, factor), 0.0, -rect.position * factor)
+		if which == BASE:
+			canvas.draw.connect(func() -> void: _draw_glass(canvas, 1.0, above_y))
+		else:
+			canvas.draw.connect(_paint.bind(FRONT, canvas))
+		front.add_child(canvas)
+	add_child(front, false, Node.INTERNAL_MODE_BACK)
+	return front.get_texture()
+
+
+func _on_node_added(node: Node) -> void:
+	if node is LightOccluder2D:
+		_occluders.append(node)
+
+
+## Maschere delle luci, gemelli allineati agli originali e, per ogni riquadro
+## inquadrato, il gemello dove nessun occluder può fare ombra.
+func _update_greenhouse_lights() -> void:
+	if not is_inside_tree():
+		return
+	var shadowed: Array[PointLight2D] = []
+	for light: PointLight2D in get_tree().get_nodes_in_group(LevelKit.LIGHTS_GROUP):
+		if light.has_meta(&"twin_of"):
+			continue
+		# La maschera decisa dal gioco, prima che la cambiassimo noi.
+		if not light.has_meta(&"base_mask"):
+			light.set_meta(&"base_mask", light.range_item_cull_mask)
+		var base: int = light.get_meta(&"base_mask")
+		var twin: PointLight2D = _twins.get(light)
+		if not light.shadow_enabled:
+			light.range_item_cull_mask = base | GREENHOUSE_BG_MASK if base & 1 else base
+			if twin:
+				twin.range_item_cull_mask = 0
+			continue
+		if twin == null:
+			twin = PointLight2D.new()
+			twin.set_meta(&"twin_of", light)
+			twin.shadow_enabled = false
+			light.add_child(twin, false, Node.INTERNAL_MODE_BACK)
+			_twins[light] = twin
+		light.range_item_cull_mask = base & ~GREENHOUSE_BG_MASK
+		twin.range_item_cull_mask = GREENHOUSE_TWIN_MASK if base & 1 else 0
+		twin.enabled = light.enabled
+		twin.texture = light.texture
+		twin.texture_scale = light.texture_scale
+		twin.offset = light.offset
+		twin.energy = light.energy
+		twin.color = light.color
+		twin.blend_mode = light.blend_mode
+		twin.height = light.height
+		if light.enabled and light.energy > 0.0 and light.is_visible_in_tree():
+			shadowed.append(light)
+	for light in _twins.keys():
+		if not is_instance_valid(light):
+			_twins.erase(light)
+	# Riquadri in cui un'ombra può cadere: per ogni occluder vicino a una luce
+	# con ombre, l'occluder allungato via dalla luce oltre il suo raggio.
+	var in_shadow := {}
+	var occluders: Array[LightOccluder2D] = []
+	for occluder in _occluders:
+		if is_instance_valid(occluder) and occluder.is_inside_tree():
+			occluders.append(occluder)
+	_occluders = occluders
+	for light in shadowed:
+		var texture_size := light.texture.get_size() if light.texture else Vector2.ZERO
+		var reach := maxf(texture_size.x, texture_size.y) * 0.5 * light.texture_scale * light.global_scale.abs().x
+		var origin := to_local(light.global_position)
+		var lit_area := Rect2(origin - Vector2(reach, reach), Vector2(reach, reach) * 2.0)
+		for occluder in occluders:
+			if occluder.occluder == null or not occluder.is_visible_in_tree():
+				continue
+			if occluder.occluder_light_mask & light.shadow_item_cull_mask == 0:
+				continue
+			var points := (global_transform.affine_inverse() * occluder.get_global_transform()) * occluder.occluder.polygon
+			if points.size() < 2:
+				continue
+			var bounds := Rect2(points[0], Vector2.ZERO)
+			for point in points:
+				bounds = bounds.expand(point)
+			if not bounds.intersects(lit_area):
+				continue
+			var swept := points.duplicate()
+			for point in points:
+				var away := point - origin
+				swept.append(point + (away.normalized() * reach * 1.5 if away != Vector2.ZERO else Vector2.ZERO))
+			var shadow := Geometry2D.convex_hull(swept)
+			# Occluder ridotto a una linea che punta verso la luce: niente ombra.
+			if shadow.size() < 3:
+				continue
+			var shadow_bounds := Rect2(shadow[0], Vector2.ZERO)
+			for point in shadow:
+				shadow_bounds = shadow_bounds.expand(point)
+			shadow_bounds = shadow_bounds.intersection(lit_area).grow(GREENHOUSE_SHADOW_MARGIN)
+			var first := maxi(floori((shadow_bounds.position.x - rect.position.x) / GREENHOUSE_TILE), 0)
+			var last := mini(floori((shadow_bounds.end.x - rect.position.x) / GREENHOUSE_TILE), _tile_columns.size() - 1)
+			for column in range(first, last + 1):
+				for tile: Array in _tile_columns[column]:
+					if in_shadow.has(tile[0]) or not tile[1].intersects(shadow_bounds):
+						continue
+					var area: Rect2 = tile[1].grow(GREENHOUSE_SHADOW_MARGIN)
+					var corners := PackedVector2Array([area.position, Vector2(area.end.x, area.position.y), area.end, Vector2(area.position.x, area.end.y)])
+					if not Geometry2D.intersect_polygons(corners, shadow).is_empty():
+						in_shadow[tile[0]] = true
+	var view := global_transform.affine_inverse() * (get_viewport().get_canvas_transform().affine_inverse() * get_viewport_rect())
+	var view_first := maxi(floori((view.position.x - rect.position.x) / GREENHOUSE_TILE), 0)
+	var view_last := mini(floori((view.end.x - rect.position.x) / GREENHOUSE_TILE), _tile_columns.size() - 1)
+	for column in range(view_first, view_last + 1):
+		for tile: Array in _tile_columns[column]:
+			var mask := 1 if in_shadow.has(tile[0]) else GREENHOUSE_BG_MASK | GREENHOUSE_TWIN_MASK
+			if tile[0].light_mask != mask:
+				tile[0].light_mask = mask
+
+
+func _update_greenhouse_shift() -> void:
+	for band_material in _foliage_materials:
+		band_material.set_shader_parameter("far_shift", _far.position.x)
+		band_material.set_shader_parameter("near_shift", _near.position.x)
 
 
 func _layer(which: int) -> CanvasItem:
@@ -242,6 +557,13 @@ func _refresh() -> void:
 			layer.queue_redraw()
 
 
+func _exit_tree() -> void:
+	if RenderingServer.frame_pre_draw.is_connected(_update_greenhouse_lights):
+		RenderingServer.frame_pre_draw.disconnect(_update_greenhouse_lights)
+	if get_tree().node_added.is_connected(_on_node_added):
+		get_tree().node_added.disconnect(_on_node_added)
+
+
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint() or style == "room":
 		return
@@ -255,9 +577,13 @@ func _process(_delta: float) -> void:
 	_back.position.x = shift * back_parallax
 	_far.position.x = shift * PARALLAX_FAR
 	_near.position.x = shift * PARALLAX_NEAR
+	if _greenhouse:
+		_update_greenhouse_shift()
 
 
 func _draw() -> void:
+	if _greenhouse:
+		return
 	if style == "room":
 		_draw_room()
 	else:
@@ -409,12 +735,13 @@ func _draw_sheet_gap(canvas: CanvasItem) -> void:
 ## lastre. Disegnate piene come luce di fondo e semitrasparenti come velo.
 ## Ogni lastra copre anche il montante (che ci va sopra): nelle texture a bassa
 ## risoluzione i bordi sfumati non lasciano aloni accanto al telaio.
-func _draw_glass(canvas: CanvasItem, alpha: float) -> void:
+func _draw_glass(canvas: CanvasItem, alpha: float, bottom := INF) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = pattern
 	var top := rect.position.y
-	var area := Rect2(rect.position.x, top, rect.size.x, wainscot_y - top)
-	var span := maxf(area.size.y, 1.0)
+	var span := maxf(wainscot_y - top, 1.0)
+	# Con bottom solo la parte sopra (la sfumatura resta quella intera).
+	var area := Rect2(rect.position.x, top, rect.size.x, minf(wainscot_y, bottom) - top)
 	var y := top
 	while y < wainscot_y:
 		var x := rect.position.x

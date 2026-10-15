@@ -38,9 +38,9 @@ extends Node2D
 ## Spinta di una corrente d'aria (px/s²): la fune dondola piano da sola.
 ## 0 = ferma finché la lampadina non la tocca.
 @export var sway := 0.0
-## Se falso la lampadina non la sposta (per le funi nei layer di parallasse,
+## Se vero la lampadina non la sposta (per le funi nei layer di parallasse,
 ## che non stanno dove passa la lampadina).
-@export var react_to_player := true
+@export var disable_interaction := false
 
 const GRAVITY := 1800.0
 ## Smorzamento a ogni passo: più è basso, prima la fune smette di oscillare.
@@ -119,7 +119,7 @@ func _physics_process(delta: float) -> void:
 		if _spark_wait <= 0.0:
 			_spark_wait = randf_range(SPARK_INTERVAL.x, SPARK_INTERVAL.y)
 			SparkBurst.spawn(self, _points[segments], randf_range(0.3, 0.8))
-	if react_to_player:
+	if not disable_interaction:
 		_push_by_player(delta)
 	var rest := length / segments
 	for k in ITERATIONS:

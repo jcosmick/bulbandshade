@@ -11,6 +11,8 @@ const LIGHT_COLOR := Color(1.0, 0.86, 0.6)
 const LIGHT_TEXTURE_RADIUS := 128.0
 ## Le luci create qui si spengono da sole quando la loro energia è 0.
 const AutoLight := preload("res://scripts/auto_light.gd")
+## Gruppo di tutte le luci create qui (le AutoLight vi entrano da sole).
+const LIGHTS_GROUP := &"auto_lights"
 
 static var _light_texture: Texture2D
 ## Materiali condivisi da tutto il gioco (vedi shared_material).

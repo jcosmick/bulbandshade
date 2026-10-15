@@ -12,6 +12,8 @@ extends Node2D
 	set(value):
 		kind = value
 		queue_redraw()
+## Se vero la lampadina non interagisce con questo oggetto.
+@export var disable_interaction := false
 
 ## Layer dei corpi dei barattoli: lo vedono solo gli altri barattoli, non la
 ## lampadina né le gocce.
@@ -100,7 +102,8 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
-	_check_kick()
+	if not disable_interaction:
+		_check_kick()
 	if _grounded and _velocity == Vector2.ZERO:
 		# Fermo: ricade solo se sparisce il pavimento (es. un'ombra solida).
 		if _is_stable(_probe_ground(-2.0, 4.0)):

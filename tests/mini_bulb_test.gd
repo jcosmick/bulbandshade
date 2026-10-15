@@ -37,7 +37,7 @@ func _run() -> void:
 
 	# Livello 5: dalla cima di CrateA salto oltre la pozza, prendo la mini
 	# lampadina verde nell'angolo e torno sulla cassa con un salto.
-	game.load_level(4)
+	await game.load_level(4)
 	await get_tree().create_timer(0.3).timeout
 	game.player.global_position = Vector2(1530, 1888)
 	await get_tree().create_timer(0.3).timeout

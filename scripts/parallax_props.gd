@@ -24,6 +24,8 @@ extends Node2D
 var _anchors := {}
 ## La scena di gioco (game.gd), che conosce telecamera e area di gioco.
 var _game: Node
+## Solo per il layer in primo piano: stesso buio del gioco, applicato al suo canvas.
+var _front_dark: CanvasModulate
 
 
 func _ready() -> void:
@@ -39,6 +41,8 @@ func _ready() -> void:
 	_game = get_parent()
 	while _game and not _game.has_method("reachable_view_center"):
 		_game = _game.get_parent()
+	if z_index >= 50:
+		_move_to_front_layer()
 
 
 func _process(_delta: float) -> void:
@@ -48,11 +52,31 @@ func _process(_delta: float) -> void:
 	if not _game:
 		return
 	var center: Vector2 = _game.view_center()
+	if _front_dark:
+		_front_dark.color = _game._darkness.color
 	for child in _anchors:
 		if is_instance_valid(child):
 			var anchor := to_global(_anchors[child])
 			var reference: Vector2 = _game.reachable_view_center(anchor)
 			child.global_position = anchor + (Vector2.ONE - scroll_scale) * (center - reference)
+
+
+## L'acqua e gli altri overlay stanno su CanvasLayer 1-2, che coprono qualsiasi
+## z_index del mondo: il primo piano deve stare su un layer più alto.
+func _move_to_front_layer() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 3
+	layer.follow_viewport_enabled = true
+	add_child(layer)
+	_front_dark = CanvasModulate.new()
+	layer.add_child(_front_dark)
+	var holder := Node2D.new()
+	holder.modulate = modulate
+	modulate = Color.WHITE
+	layer.add_child(holder)
+	for child in _anchors.keys():
+		child.reparent(holder, false)
+		child.z_index = 0
 
 
 func _update_depth_scale() -> void:

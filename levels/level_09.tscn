@@ -3,11 +3,11 @@
 [ext_resource type="Script" uid="uid://cgr4ipmwfnphq" path="res://scripts/level.gd" id="1"]
 [ext_resource type="Script" uid="uid://cfb54eli4ce7p" path="res://scripts/room_background.gd" id="2"]
 [ext_resource type="PackedScene" path="res://prefabs/parallax/parallax_back.tscn" id="3"]
-[ext_resource type="PackedScene" path="res://prefabs/props/hanged_bulb.tscn" id="4"]
-[ext_resource type="PackedScene" path="res://prefabs/props/chain.tscn" id="5"]
-[ext_resource type="PackedScene" path="res://prefabs/props/bulb_pile.tscn" id="6"]
+[ext_resource type="PackedScene" path="res://prefabs/props/lighting/hanged_bulb.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://prefabs/props/hanging/chain.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://prefabs/props/lighting/bulb_pile.tscn" id="6"]
 [ext_resource type="PackedScene" path="res://prefabs/parallax/parallax_front.tscn" id="7"]
-[ext_resource type="PackedScene" path="res://prefabs/props/trash_bags.tscn" id="8"]
+[ext_resource type="PackedScene" path="res://prefabs/props/containers/trash_bags.tscn" id="8"]
 [ext_resource type="Script" uid="uid://c7ngnkpr6cikx" path="res://scripts/block.gd" id="9"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/crate.tscn" id="10"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/water_basin.tscn" id="11"]
@@ -17,26 +17,26 @@
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/hanging_crate.tscn" id="15"]
 [ext_resource type="PackedScene" path="res://prefabs/gameplay/goal.tscn" id="16"]
 [ext_resource type="PackedScene" path="res://prefabs/gameplay/player.tscn" id="17"]
-[ext_resource type="PackedScene" path="res://prefabs/props/neon_broken.tscn" id="18"]
-[ext_resource type="PackedScene" path="res://prefabs/props/neon_light.tscn" id="19"]
-[ext_resource type="PackedScene" path="res://prefabs/props/wall_writing_glow.tscn" id="20"]
-[ext_resource type="PackedScene" path="res://prefabs/props/wall_writing.tscn" id="21"]
-[ext_resource type="PackedScene" path="res://prefabs/props/wall_tally.tscn" id="22"]
-[ext_resource type="PackedScene" path="res://prefabs/props/torn_cable.tscn" id="23"]
-[ext_resource type="PackedScene" path="res://prefabs/props/broken_socket.tscn" id="24"]
-[ext_resource type="PackedScene" path="res://prefabs/props/noose.tscn" id="25"]
-[ext_resource type="PackedScene" path="res://prefabs/props/chair_fallen.tscn" id="26"]
-[ext_resource type="PackedScene" path="res://prefabs/props/dead_bulb.tscn" id="27"]
-[ext_resource type="PackedScene" path="res://prefabs/props/dead_bulb_shattered.tscn" id="28"]
-[ext_resource type="PackedScene" path="res://prefabs/props/glass_shards.tscn" id="29"]
-[ext_resource type="PackedScene" path="res://prefabs/props/trash_bin.tscn" id="30"]
-[ext_resource type="PackedScene" path="res://prefabs/props/ghost_bulb.tscn" id="32"]
-[ext_resource type="PackedScene" path="res://prefabs/props/dark_eyes.tscn" id="33"]
-[ext_resource type="PackedScene" path="res://prefabs/props/cobweb.tscn" id="34"]
-[ext_resource type="PackedScene" path="res://prefabs/props/cobweb_spider.tscn" id="35"]
+[ext_resource type="PackedScene" path="res://prefabs/props/lighting/neon_broken.tscn" id="18"]
+[ext_resource type="PackedScene" path="res://prefabs/props/lighting/neon_light.tscn" id="19"]
+[ext_resource type="PackedScene" path="res://prefabs/props/walls/wall_writing_glow.tscn" id="20"]
+[ext_resource type="PackedScene" path="res://prefabs/props/walls/wall_writing.tscn" id="21"]
+[ext_resource type="PackedScene" path="res://prefabs/props/walls/wall_tally.tscn" id="22"]
+[ext_resource type="PackedScene" path="res://prefabs/props/electrical/torn_cable.tscn" id="23"]
+[ext_resource type="PackedScene" path="res://prefabs/props/electrical/broken_socket.tscn" id="24"]
+[ext_resource type="PackedScene" path="res://prefabs/props/hanging/noose.tscn" id="25"]
+[ext_resource type="PackedScene" path="res://prefabs/props/containers/chair_fallen.tscn" id="26"]
+[ext_resource type="PackedScene" path="res://prefabs/props/lighting/dead_bulb.tscn" id="27"]
+[ext_resource type="PackedScene" path="res://prefabs/props/lighting/dead_bulb_shattered.tscn" id="28"]
+[ext_resource type="PackedScene" path="res://prefabs/props/atmosphere/glass_shards.tscn" id="29"]
+[ext_resource type="PackedScene" path="res://prefabs/props/containers/trash_bin.tscn" id="30"]
+[ext_resource type="PackedScene" path="res://prefabs/props/lighting/ghost_bulb.tscn" id="32"]
+[ext_resource type="PackedScene" path="res://prefabs/props/atmosphere/dark_eyes.tscn" id="33"]
+[ext_resource type="PackedScene" path="res://prefabs/props/atmosphere/cobweb.tscn" id="34"]
+[ext_resource type="PackedScene" path="res://prefabs/props/atmosphere/cobweb_spider.tscn" id="35"]
 [ext_resource type="PackedScene" path="res://prefabs/gizmos/flash_preview.tscn" id="36"]
 [ext_resource type="PackedScene" path="res://prefabs/gizmos/jump_arc.tscn" id="37"]
-[ext_resource type="PackedScene" path="res://prefabs/props/dust.tscn" id="38_cx2ad"]
+[ext_resource type="PackedScene" path="res://prefabs/props/atmosphere/dust.tscn" id="38_cx2ad"]
 
 [node name="Level09" type="Node2D" unique_id=1212916702]
 script = ExtResource("1")
@@ -60,61 +60,61 @@ position = Vector2(260, 80)
 scale = Vector2(0.7, 0.7)
 length = 300.0
 sway = 25.0
-react_to_player = false
+disable_interaction = true
 
 [node name="BackHanged2" parent="ParallaxBack" unique_id=323690023 instance=ExtResource("4")]
 position = Vector2(612.00006, 82)
 scale = Vector2(0.7, 0.7)
 length = 420.0
 sway = 25.0
-react_to_player = false
+disable_interaction = true
 
 [node name="BackHanged3" parent="ParallaxBack" unique_id=1701675316 instance=ExtResource("4")]
 position = Vector2(1180, 80)
 scale = Vector2(0.7, 0.7)
 sway = 25.0
-react_to_player = false
+disable_interaction = true
 
 [node name="BackHanged4" parent="ParallaxBack" unique_id=355510809 instance=ExtResource("4")]
 position = Vector2(1640, 80)
 scale = Vector2(0.7, 0.7)
 length = 380.0
 sway = 25.0
-react_to_player = false
+disable_interaction = true
 
 [node name="BackHanged5" parent="ParallaxBack" unique_id=486631438 instance=ExtResource("4")]
 position = Vector2(2100, 80)
 scale = Vector2(0.7, 0.7)
 length = 300.0
 sway = 25.0
-react_to_player = false
+disable_interaction = true
 
 [node name="BackHanged6" parent="ParallaxBack" unique_id=2040971215 instance=ExtResource("4")]
 position = Vector2(2560, 80)
 scale = Vector2(0.7, 0.7)
 length = 440.0
 sway = 25.0
-react_to_player = false
+disable_interaction = true
 
 [node name="BackHanged7" parent="ParallaxBack" unique_id=1735113421 instance=ExtResource("4")]
 position = Vector2(3000, 80)
 scale = Vector2(0.7, 0.7)
 length = 330.0
 sway = 25.0
-react_to_player = false
+disable_interaction = true
 
 [node name="BackChain" parent="ParallaxBack" unique_id=973288145 instance=ExtResource("5")]
 position = Vector2(950, 80)
 scale = Vector2(0.7, 0.7)
 length = 520.0
-react_to_player = false
+disable_interaction = true
 
 [node name="BackChain2" parent="ParallaxBack" unique_id=497638126 instance=ExtResource("5")]
 position = Vector2(2330, 80)
 scale = Vector2(0.7, 0.7)
 length = 380.0
 end_style = "loop"
-react_to_player = false
+disable_interaction = true
 
 [node name="BackPile" parent="ParallaxBack" unique_id=866434291 instance=ExtResource("6")]
 position = Vector2(1420, 1420)
@@ -136,7 +136,7 @@ position = Vector2(368, -29)
 scale = Vector2(1.8, 1.8)
 length = 290.0
 thickness = 5.0
-react_to_player = false
+disable_interaction = true
 
 [node name="FrontHanged2" parent="ParallaxFront" unique_id=1576237601 instance=ExtResource("4")]
 position = Vector2(900, -60)
@@ -144,7 +144,7 @@ scale = Vector2(1.8, 1.8)
 length = 130.0
 thickness = 5.0
 sway = 55.0
-react_to_player = false
+disable_interaction = true
 
 [node name="FrontHanged3" parent="ParallaxFront" unique_id=1403247800 instance=ExtResource("4")]
 position = Vector2(1700, -60)
@@ -152,7 +152,7 @@ scale = Vector2(1.8, 1.8)
 length = 70.0
 thickness = 5.0
 sway = 35.0
-react_to_player = false
+disable_interaction = true
 
 [node name="FrontHanged4" parent="ParallaxFront" unique_id=1924297515 instance=ExtResource("4")]
 position = Vector2(2450, -60)
@@ -160,7 +160,7 @@ scale = Vector2(1.8, 1.8)
 length = 120.0
 thickness = 5.0
 sway = 50.0
-react_to_player = false
+disable_interaction = true
 
 [node name="FrontHanged5" parent="ParallaxFront" unique_id=1789144951 instance=ExtResource("4")]
 position = Vector2(3150, -60)
@@ -168,7 +168,7 @@ scale = Vector2(1.8, 1.8)
 length = 100.0
 thickness = 5.0
 sway = 45.0
-react_to_player = false
+disable_interaction = true
 
 [node name="FrontPile" parent="ParallaxFront" unique_id=1036620958 instance=ExtResource("6")]
 position = Vector2(560, 1580)

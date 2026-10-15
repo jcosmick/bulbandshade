@@ -28,6 +28,8 @@ extends Node2D
 ## Distanza dalla lampadina sotto cui gli occhi si chiudono (la sua luce
 ## arriva a circa 300 px).
 @export var shy_distance := 380.0
+## Se vero la lampadina non interagisce con questo oggetto.
+@export var disable_interaction := false
 ## Cambialo per disporre diversamente le coppie.
 @export var pattern := 1:
 	set(value):
@@ -59,7 +61,8 @@ func _ready() -> void:
 		return
 	_visual = LevelKit.make_overlay(self)
 	_visual.draw.connect(func() -> void: _draw_eyes(_visual))
-	_player = LevelKit.find_player(self)
+	if not disable_interaction:
+		_player = LevelKit.find_player(self)
 	if _player:
 		_player.flashed.connect(_on_flashed)
 	for offset in _offsets():

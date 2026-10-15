@@ -41,6 +41,8 @@ extends Node2D
 		pattern = value
 		_strands_cache.clear()
 		queue_redraw()
+## Se vero la lampadina non interagisce con questo oggetto.
+@export var disable_interaction := false
 
 ## Molla che riporta il tralcio a piombo e smorzamento dell'oscillazione.
 const STIFFNESS := 18.0
@@ -123,9 +125,10 @@ func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	var players: Array[Player] = []
-	for body in _area.get_overlapping_bodies():
-		if body is Player:
-			players.append(body)
+	if not disable_interaction:
+		for body in _area.get_overlapping_bodies():
+			if body is Player:
+				players.append(body)
 	# Fermo e senza lampadina vicino: niente da muovere né da ridisegnare.
 	if _resting and players.is_empty():
 		return

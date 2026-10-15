@@ -14,6 +14,8 @@ extends Node2D
 @export_range(0.0, 0.3, 0.01) var idle_alpha := 0.0
 ## Se vero, dopo essere stata vista una volta non torna più.
 @export var only_once := false
+## Se vero la lampadina non interagisce con questo oggetto.
+@export var disable_interaction := false
 
 const BODY := Color(0.72, 0.85, 1.0, 0.45)
 const OUTLINE := Color(0.85, 0.94, 1.0, 0.8)
@@ -42,7 +44,8 @@ func _ready() -> void:
 	# Sopra il buio: quando appare deve "brillare" anche se il flash è già finito.
 	_visual = LevelKit.make_overlay(self)
 	_visual.draw.connect(func() -> void: _draw_ghost(_visual))
-	_player = LevelKit.find_player(self)
+	if not disable_interaction:
+		_player = LevelKit.find_player(self)
 	if _player:
 		_player.flashed.connect(_on_flashed)
 	LevelKit.process_on_screen(self, Rect2(-60, -140, 120, 160))

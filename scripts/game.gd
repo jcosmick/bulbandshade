@@ -19,6 +19,11 @@ const VIEW_WIDTH := 1080.0
 ## Quanto può salire la lampadina in aria prima che la telecamera la segua in
 ## verticale (poco più dell'altezza di un salto): saltando la visuale resta ferma.
 const CAMERA_JUMP_MARGIN := 340.0
+## Frame disegnati a gioco fermo sotto la schermata di caricamento: bastano
+## per i prewarm (3 frame) e per gli sfondi in texture (RoomBackground._bake).
+const WARMUP_FRAMES := 8
+## Durata minima della schermata di caricamento, perché non sia solo un lampo.
+const MIN_LOADING_TIME := 0.4
 
 var level_index := 0
 var level: Level
@@ -51,6 +56,10 @@ var _follow := false
 var camera_focus: Node2D
 ## Altezza seguita dalla telecamera: quella dell'ultimo appoggio della lampadina.
 var _focus_y := 0.0
+var _loading_screen: LoadingScreen
+## Numero dell'ultimo caricamento chiesto: uno più vecchio che si risveglia
+## dopo un await smette lì (vince sempre l'ultima richiesta).
+var _load_id := 0
 
 
 func _ready() -> void:
@@ -82,18 +91,30 @@ func _ready() -> void:
 	load_level(Progress.selected_level)
 
 
+## Carica il livello dietro la schermata di caricamento: la scena si legge in
+## un thread, poi il gioco resta in pausa per qualche frame mentre shader e
+## sfondi si preparano, così la partita comincia già fluida.
 func load_level(index: int) -> void:
+	_load_id += 1
+	var id := _load_id
+	_loading_screen.show_now()
+	get_tree().paused = true
+	var started := Time.get_ticks_msec()
 	level_index = index
 	won = false
 	flash_count = 0
 	if level:
 		remove_child(level)
 		level.queue_free()
+		level = null
 	for platform in _shadow_layer.get_children():
 		platform.queue_free()
 
 	var path := Progress.test_level if Progress.test_level else Progress.level_path(index)
-	level = load(path).instantiate()
+	var scene := await _load_scene(path)
+	if id != _load_id:
+		return
+	level = scene.instantiate()
 	add_child(level)
 	Music.play_song(level.music)
 	player = level.get_node("Player")
@@ -124,6 +145,25 @@ func load_level(index: int) -> void:
 	if intro:
 		intro.start(self)
 
+	for i in WARMUP_FRAMES:
+		await RenderingServer.frame_post_draw
+	while Time.get_ticks_msec() - started < MIN_LOADING_TIME * 1000.0:
+		await get_tree().process_frame
+	if id != _load_id:
+		return
+	get_tree().paused = false
+	_loading_screen.fade_out()
+
+
+## Legge la scena in un thread, senza bloccare i frame (la schermata di
+## caricamento resta animata).
+func _load_scene(path: String) -> PackedScene:
+	if ResourceLoader.load_threaded_request(path) != OK:
+		return load(path)
+	while ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+		await get_tree().process_frame
+	return ResourceLoader.load_threaded_get(path)
+
 
 ## Quattro fasce attorno a level_rect, abbastanza grandi da coprire lo
 ## schermo con qualsiasi zoom e posizione della telecamera.
@@ -149,6 +189,8 @@ func _on_brightness_changed(_value: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if level == null:
+		return
 	_buttons["flash"].set_progress(player.flash_charge())
 	_buttons["flash"].pulsing = player.flash_charge() >= 1.0 and _flash_hint_active()
 	# Durante le cutscene (ingranaggio nascosto) niente impostazioni né
@@ -269,6 +311,7 @@ func _open_settings() -> void:
 
 
 func go_to_menu() -> void:
+	get_tree().paused = false
 	get_tree().change_scene_to_file(MENU_SCENE)
 
 
@@ -364,6 +407,10 @@ func _build_hud() -> void:
 	_settings.restart_requested.connect(func() -> void: load_level(level_index))
 	_settings.home_requested.connect(go_to_menu)
 	hud.add_child(_settings)
+
+	# Sopra a tutto: copre il livello mentre si carica.
+	_loading_screen = LoadingScreen.new()
+	hud.add_child(_loading_screen)
 
 
 func _make_label(parent: Node, font_size: int) -> Label:

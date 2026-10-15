@@ -97,7 +97,7 @@ func _ready() -> void:
 	Progress.persist = false
 	game = load("res://scenes/game.tscn").instantiate()
 	add_child(game)
-	game.load_level(level - 1)
+	await game.load_level(level - 1)
 	game.player.died.connect(func() -> void:
 		_deaths += 1
 		_log("CORTOCIRCUITO"))

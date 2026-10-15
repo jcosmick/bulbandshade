@@ -68,6 +68,8 @@ const DIM_JITTER := 0.05
 ## Camminando su un'ombra, dai piedi si staccano pallini neri che salgono e spariscono.
 const SHADOW_DUST_AMOUNT := 10
 const SHADOW_DUST_LIFETIME := 0.55
+## God mode: velocità di volo libero.
+const GOD_FLY_SPEED := 900.0
 
 @export var flash_radius := 750.0
 ## Secondi di ricarica tra un flash e l'altro.
@@ -77,6 +79,8 @@ const SHADOW_DUST_LIFETIME := 0.55
 	set(value):
 		show_jump_arc = value
 		queue_redraw()
+## Debug: vola attraverso il livello (WASD/frecce) e non può morire. In gioco si alterna con G.
+@export var god_mode := false
 
 var controls_enabled := true
 var dead := false
@@ -138,6 +142,24 @@ func _ready() -> void:
 	_blink_wait = randf_range(BLINK_MIN_INTERVAL, BLINK_MAX_INTERVAL)
 	_look_wait = randf_range(LOOK_MIN_INTERVAL, LOOK_MAX_INTERVAL)
 	_shadow_dust = _make_shadow_dust()
+	if god_mode:
+		_set_god_mode(true)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if Engine.is_editor_hint():
+		return
+	if event.is_action_pressed("god_mode") and not event.is_echo() and not dead and not _socketed:
+		_set_god_mode(not god_mode)
+
+
+## God mode: niente collisioni né gravità, e die() viene ignorata.
+func _set_god_mode(on: bool) -> void:
+	god_mode = on
+	collision_mask = 0 if on else 1 | ShadowSystem.SHADOW_COLLISION_LAYER
+	velocity = Vector2.ZERO
+	_shadow_dust.emitting = false
+	print("God mode ", "ON" if on else "OFF")
 
 
 ## Pallini neri ai piedi, come quelli dell'ombra che si sfalda ma più piccoli:
@@ -176,7 +198,7 @@ func light_origin() -> Vector2:
 
 ## Cortocircuito: la lampadina si blocca, sfrigola e si spegne.
 func die() -> void:
-	if dead or not controls_enabled:
+	if dead or not controls_enabled or god_mode:
 		return
 	dead = true
 	_dead_time = 0.0
@@ -194,7 +216,7 @@ func die() -> void:
 func respawn(at: Vector2) -> void:
 	dead = false
 	collision_layer = 1
-	collision_mask = 1 | ShadowSystem.SHADOW_COLLISION_LAYER
+	collision_mask = 0 if god_mode else 1 | ShadowSystem.SHADOW_COLLISION_LAYER
 	controls_enabled = true
 	set_physics_process(true)
 	global_position = at
@@ -212,6 +234,14 @@ func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	var direction := Input.get_axis("move_left", "move_right") if controls_enabled else 0.0
+	if god_mode:
+		var vertical := Input.get_axis("jump", "move_down") if controls_enabled else 0.0
+		velocity = (Vector2(direction, vertical) * GOD_FLY_SPEED).limit_length(GOD_FLY_SPEED)
+		if direction != 0.0:
+			_facing = signf(direction)
+		move_and_slide()
+		_update_flash(delta)
+		return
 
 	_coyote = COYOTE_TIME if is_on_floor() else _coyote - delta
 	if controls_enabled and Input.is_action_just_pressed("jump"):
@@ -262,6 +292,10 @@ func _physics_process(delta: float) -> void:
 			# la lampadina resterebbe indietro e la spinta andrebbe a scatti.
 			velocity.x = push_velocity
 
+	_update_flash(delta)
+
+
+func _update_flash(delta: float) -> void:
 	var was_charging := _flash_cooldown > 0.0
 	_flash_cooldown -= delta
 	if was_charging and _flash_cooldown <= 0.0 and controls_enabled:

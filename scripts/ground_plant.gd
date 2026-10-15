@@ -31,6 +31,8 @@ extends Node2D
 	set(value):
 		pattern = value
 		queue_redraw()
+## Se vero la lampadina non interagisce con questo oggetto.
+@export var disable_interaction := false
 
 const LEAF := Color(0.16, 0.26, 0.16)
 const LEAF_DARK := Color(0.11, 0.19, 0.12)
@@ -127,9 +129,10 @@ func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint() or kind == "cactus":
 		return
 	var players: Array[Player] = []
-	for body in _area.get_overlapping_bodies():
-		if body is Player:
-			players.append(body)
+	if not disable_interaction:
+		for body in _area.get_overlapping_bodies():
+			if body is Player:
+				players.append(body)
 	# Ferma e senza lampadina vicino: niente da muovere né da ridisegnare.
 	if _resting and players.is_empty():
 		return

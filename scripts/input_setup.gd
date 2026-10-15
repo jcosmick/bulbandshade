@@ -11,6 +11,8 @@ func _enter_tree() -> void:
 	_add_action("restart", [KEY_R])
 	_add_action("menu", [KEY_ESCAPE])
 	_add_action("settings", [KEY_O])
+	_add_action("move_down", [KEY_S, KEY_DOWN])
+	_add_action("god_mode", [KEY_G])
 
 
 func _add_action(action: StringName, keys: Array) -> void:

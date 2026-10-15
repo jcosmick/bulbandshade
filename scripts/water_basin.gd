@@ -8,7 +8,7 @@ extends Node2D
 ## pavimento metti y = pavimento, per una vasca appoggiata y = pavimento - size.y.
 
 ## Taglia da sola i Block di terreno che attraversa (es. il pavimento): non
-## serve spezzarli a mano. Le casse (casts_shadow) e quelle appese non si
+## serve spezzarli a mano. Le casse, i blocchi con ombra e quelli appesi non si
 ## tagliano. Nell'editor il buco segue la vasca quando la sposti.
 @export var cut_floor := true:
 	set(value):
@@ -160,7 +160,7 @@ func _cuttable_blocks(node: Node) -> Array[Block]:
 		if child == self or child is WaterBasin or child.has_meta(PART_META) or child.has_meta(Block.PIECE_META):
 			continue
 		if child is Block:
-			if not child.casts_shadow and child.chain_length <= 0.0 and is_zero_approx(child.global_rotation):
+			if child.type == Block.Type.CONCRETE and not child.casts_shadow and child.chain_length <= 0.0 and is_zero_approx(child.global_rotation):
 				result.append(child)
 			continue
 		result.append_array(_cuttable_blocks(child))

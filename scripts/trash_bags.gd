@@ -19,6 +19,8 @@ extends Node2D
 	set(value):
 		pattern = value
 		queue_redraw()
+## Se vero la lampadina non interagisce con questo oggetto.
+@export var disable_interaction := false
 
 const PLASTIC := Color(0.13, 0.13, 0.15)
 const PLASTIC_DARK := Color(0.08, 0.08, 0.1)
@@ -58,14 +60,15 @@ func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	var target := 0.0
-	for body in _area.get_overlapping_bodies():
-		var player := body as Player
-		if player == null:
-			continue
-		var speed := player.velocity.length()
-		_rustle.touch(speed)
-		target = clampf(speed / Player.SPEED, 0.3, 1.0)
-		_lean = signf(global_position.x - player.global_position.x)
+	if not disable_interaction:
+		for body in _area.get_overlapping_bodies():
+			var player := body as Player
+			if player == null:
+				continue
+			var speed := player.velocity.length()
+			_rustle.touch(speed)
+			target = clampf(speed / Player.SPEED, 0.3, 1.0)
+			_lean = signf(global_position.x - player.global_position.x)
 	var previous := _squish
 	_squish = move_toward(_squish, target, delta * SPRING * (1.0 if target > _squish else 0.5))
 	if not is_equal_approx(previous, _squish):

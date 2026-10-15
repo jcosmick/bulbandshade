@@ -3,7 +3,9 @@
 [ext_resource type="Script" uid="uid://cgr4ipmwfnphq" path="res://scripts/level.gd" id="1"]
 [ext_resource type="Script" uid="uid://cfb54eli4ce7p" path="res://scripts/room_background.gd" id="2"]
 [ext_resource type="Script" uid="uid://c7ngnkpr6cikx" path="res://scripts/block.gd" id="3"]
+[ext_resource type="PackedScene" path="res://prefabs/parallax/parallax_front.tscn" id="3_71m0p"]
 [ext_resource type="Script" uid="uid://kt1g27e60883" path="res://scripts/player.gd" id="4"]
+[ext_resource type="PackedScene" path="res://prefabs/props/hanging/chain.tscn" id="4_c0ku1"]
 [ext_resource type="Script" uid="uid://bj4aruw1g0xq8" path="res://scripts/goal_lamp.gd" id="5"]
 [ext_resource type="Script" uid="uid://c5am5dc1sfroc" path="res://scripts/water_pool.gd" id="6"]
 [ext_resource type="Script" uid="uid://q3m0evvnpwdy" path="res://scripts/water_drip.gd" id="7"]
@@ -12,28 +14,28 @@
 [ext_resource type="PackedScene" path="res://prefabs/gizmos/jump_arc.tscn" id="12_qu1ij"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/block.tscn" id="13_8i6cg"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/glass_pane.tscn" id="13_tosix"]
-[ext_resource type="PackedScene" path="res://prefabs/props/cobweb.tscn" id="14_yp53p"]
-[ext_resource type="PackedScene" path="res://prefabs/props/cobweb_spider.tscn" id="15_xcgam"]
-[ext_resource type="PackedScene" path="res://prefabs/props/pipe_elbow.tscn" id="17_4yosn"]
-[ext_resource type="PackedScene" path="res://prefabs/props/barrel.tscn" id="17_xcgam"]
-[ext_resource type="PackedScene" path="res://prefabs/props/barrel_lying.tscn" id="18_pehbd"]
+[ext_resource type="PackedScene" path="res://prefabs/props/atmosphere/cobweb.tscn" id="14_yp53p"]
+[ext_resource type="PackedScene" path="res://prefabs/props/atmosphere/cobweb_spider.tscn" id="15_xcgam"]
+[ext_resource type="PackedScene" path="res://prefabs/props/industrial/pipe_elbow.tscn" id="17_4yosn"]
+[ext_resource type="PackedScene" path="res://prefabs/props/containers/barrel.tscn" id="17_xcgam"]
+[ext_resource type="PackedScene" path="res://prefabs/props/containers/barrel_lying.tscn" id="18_pehbd"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/crate.tscn" id="19_pehbd"]
 [ext_resource type="PackedScene" path="res://prefabs/gizmos/flash_preview.tscn" id="20_4yosn"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/tall_crate.tscn" id="21_5r10y"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/hanging_crate.tscn" id="22_hjpc8"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/window_light.tscn" id="23_hjpc8"]
-[ext_resource type="PackedScene" path="res://prefabs/props/exposed_bricks.tscn" id="24_symhl"]
-[ext_resource type="PackedScene" path="res://prefabs/props/fan.tscn" id="25_4keop"]
-[ext_resource type="PackedScene" path="res://prefabs/props/sack_pile.tscn" id="26_3yrdd"]
-[ext_resource type="PackedScene" path="res://prefabs/props/rope_hook.tscn" id="27_ccdmt"]
-[ext_resource type="PackedScene" path="res://prefabs/props/jar.tscn" id="28_4keop"]
-[ext_resource type="PackedScene" path="res://prefabs/props/wall_crack.tscn" id="29_3yrdd"]
+[ext_resource type="PackedScene" path="res://prefabs/props/walls/exposed_bricks.tscn" id="24_symhl"]
+[ext_resource type="PackedScene" path="res://prefabs/props/industrial/fan.tscn" id="25_4keop"]
+[ext_resource type="PackedScene" path="res://prefabs/props/containers/sack_pile.tscn" id="26_3yrdd"]
+[ext_resource type="PackedScene" path="res://prefabs/props/hanging/rope_hook.tscn" id="27_ccdmt"]
+[ext_resource type="PackedScene" path="res://prefabs/props/containers/jar.tscn" id="28_4keop"]
+[ext_resource type="PackedScene" path="res://prefabs/props/walls/wall_crack.tscn" id="29_3yrdd"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/floor_button.tscn" id="30_17uxu"]
-[ext_resource type="PackedScene" path="res://prefabs/props/wall_switch.tscn" id="31_2js5s"]
+[ext_resource type="PackedScene" path="res://prefabs/props/electrical/wall_switch.tscn" id="31_2js5s"]
 [ext_resource type="PackedScene" path="res://prefabs/level_structures/rail_crate.tscn" id="31_jgin7"]
-[ext_resource type="PackedScene" path="res://prefabs/props/pipe.tscn" id="32_d0rjm"]
+[ext_resource type="PackedScene" path="res://prefabs/props/industrial/pipe.tscn" id="32_d0rjm"]
 [ext_resource type="PackedScene" path="res://prefabs/gameplay/flash_hint.tscn" id="33_2js5s"]
-[ext_resource type="PackedScene" path="res://prefabs/props/dust.tscn" id="34_d0rjm"]
+[ext_resource type="PackedScene" path="res://prefabs/props/atmosphere/dust.tscn" id="34_d0rjm"]
 
 [node name="Level07" type="Node2D" unique_id=540974168]
 script = ExtResource("1")
@@ -44,8 +46,36 @@ level_rect = Rect2(0, 0, 3080, 2520)
 [node name="Background" type="Node2D" parent="." unique_id=850831773]
 z_index = -10
 script = ExtResource("2")
+style = "warehouse"
 rect = Rect2(0, 0, 3080, 2520)
 wainscot_y = 2120.0
+rack_shadow_opacity = 0.03
+pattern = -6
+
+[node name="ParallaxFront" parent="." unique_id=298294165 instance=ExtResource("3_71m0p")]
+modulate = Color(0.18269631, 0.18270525, 0.21927685, 1)
+scroll_scale = Vector2(2.2, 1)
+_depth = 2.2
+
+[node name="HangingCrate" parent="ParallaxFront" unique_id=1479372501 instance=ExtResource("22_hjpc8")]
+position = Vector2(1225, 352)
+scale = Vector2(1.88, 1.88)
+casts_shadow = false
+
+[node name="Cobweb" parent="ParallaxFront" unique_id=1133230808 instance=ExtResource("14_yp53p")]
+position = Vector2(-17.999996, -14.999992)
+scale = Vector2(2.5, 2.5)
+
+[node name="SackPile3" parent="ParallaxFront" unique_id=1028522118 instance=ExtResource("26_3yrdd")]
+position = Vector2(2548.0002, 2565)
+scale = Vector2(2.34, 2.34)
+rows = 2
+
+[node name="Chain" parent="ParallaxFront" unique_id=2129435484 instance=ExtResource("4_c0ku1")]
+position = Vector2(1918, -584.00006)
+scale = Vector2(3.66, 3.66)
+length = 420.0
+disable_interaction = true
 
 [node name="Ceiling" type="StaticBody2D" parent="." unique_id=990450654]
 position = Vector2(1540, 40)
@@ -112,6 +142,7 @@ script = ExtResource("9")
 position = Vector2(2623, 2013)
 script = ExtResource("3")
 size = Vector2(100, 75)
+type = 1
 casts_shadow = true
 
 [node name="LedgeGoal" type="StaticBody2D" parent="." unique_id=1211085098]
@@ -148,10 +179,6 @@ position = Vector2(975, 1458)
 
 [node name="GlassPane" parent="." unique_id=1137458215 instance=ExtResource("13_tosix")]
 position = Vector2(1401, 1759)
-
-[node name="Cobweb" parent="." unique_id=1133230808 instance=ExtResource("14_yp53p")]
-z_index = -5
-position = Vector2(58, 80)
 
 [node name="CobwebSpider" parent="." unique_id=972665118 instance=ExtResource("15_xcgam")]
 z_index = -5
@@ -351,3 +378,7 @@ position = Vector2(2967, 1697)
 z_index = -9
 position = Vector2(2906, 1484)
 pattern = 2
+
+[node name="BarrelLying2" parent="." unique_id=1247922977 instance=ExtResource("18_pehbd")]
+z_index = -5
+position = Vector2(162, 2381)

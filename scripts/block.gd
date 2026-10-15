@@ -1,8 +1,10 @@
 @tool
 class_name Block
 extends StaticBody2D
-## Blocco fisso. Se casts_shadow è attivo è una cassa di legno che, quando la
-## lampadina fa il flash, proietta un'ombra solida.
+## Blocco fisso: cemento o cassa di legno (type). Se casts_shadow è attivo,
+## quando la lampadina fa il flash proietta un'ombra solida.
+
+enum Type { CONCRETE, BOX }
 
 ## Dimensioni in pixel (il blocco è centrato sul nodo).
 @export var size := Vector2(200, 40):
@@ -11,6 +13,11 @@ extends StaticBody2D
 		queue_redraw()
 		if is_cut():
 			_refresh_cut()
+## Aspetto del blocco: terreno di cemento o cassa di legno.
+@export var type := Type.CONCRETE:
+	set(value):
+		type = value
+		queue_redraw()
 @export var casts_shadow := false:
 	set(value):
 		casts_shadow = value
@@ -132,7 +139,7 @@ func _draw() -> void:
 	var top := -size.y / 2.0
 	for i in int(chain_length / CHAIN_LINK):
 		draw_rect(Rect2(-5.0, top - (i + 1) * CHAIN_LINK, 10.0, CHAIN_LINK - 3.0), CHAIN_COLOR, false, 3.0)
-	if casts_shadow:
+	if type == Type.BOX:
 		LevelKit.draw_crate(self, size, false)
 	else:
 		LevelKit.draw_terrain(self, size)

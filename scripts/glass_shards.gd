@@ -18,6 +18,8 @@ extends Node2D
 	set(value):
 		pattern = value
 		queue_redraw()
+## Se vero la lampadina non interagisce con questo oggetto.
+@export var disable_interaction := false
 
 const GLASS := Color(0.58, 0.64, 0.7)
 const GLASS_EDGE := Color(0.8, 0.86, 0.92)
@@ -56,9 +58,10 @@ func _ready() -> void:
 	_visual.material = LevelKit.shared_material(CanvasItemMaterial.BLEND_MODE_ADD)
 	_visual.draw.connect(_draw_glints)
 	LevelKit.prewarm(_visual)
-	var player := LevelKit.find_player(self)
-	if player:
-		player.flashed.connect(_on_flashed)
+	if not disable_interaction:
+		var player := LevelKit.find_player(self)
+		if player:
+			player.flashed.connect(_on_flashed)
 	_area = Area2D.new()
 	_area.collision_layer = 0
 	_area.collision_mask = 1
@@ -79,7 +82,7 @@ func _physics_process(delta: float) -> void:
 	_time += delta
 	_visual.queue_redraw()
 	_cooldown = maxf(0.0, _cooldown - delta)
-	if _cooldown > 0.0:
+	if _cooldown > 0.0 or disable_interaction:
 		return
 	for body in _area.get_overlapping_bodies():
 		var player := body as Player

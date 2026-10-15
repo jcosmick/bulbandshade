@@ -6,9 +6,10 @@ extends Node2D
 ## decorativa. L'origine è il punto d'aggancio sul soffitto.
 ## "flicker": quasi sempre accesa, ogni tanto vacilla.
 ## "broken": quasi sempre spenta, ogni tanto prova a riaccendersi.
+## "steady": sempre accesa, fissa, senza sfarfallii.
 ## "dead": spenta, con il tubo rotto.
 
-@export_enum("flicker", "broken", "dead") var mode := "flicker":
+@export_enum("flicker", "broken", "steady", "dead") var mode := "flicker":
 	set(value):
 		mode = value
 		queue_redraw()
@@ -61,7 +62,7 @@ func _ready() -> void:
 	z_index = -6
 	if Engine.is_editor_hint():
 		return
-	_on = mode == "flicker"
+	_on = mode == "flicker" or mode == "steady"
 	var center := _tube_center()
 	if mode != "dead":
 		_light = LevelKit.make_light(self, light_radius, ENERGY if _on else 0.0, shadows)
@@ -83,7 +84,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if Engine.is_editor_hint() or mode == "dead":
+	if Engine.is_editor_hint() or mode == "dead" or mode == "steady":
 		return
 	if _pattern.is_empty() and _step_time <= 0.0:
 		_wait -= delta

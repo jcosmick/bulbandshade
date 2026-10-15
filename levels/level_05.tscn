@@ -11,22 +11,22 @@
 [ext_resource type="Script" uid="uid://41xrl1kpdaui" path="res://scripts/rail_crate.gd" id="10"]
 [ext_resource type="Script" uid="uid://dsuubmi51ia4i" path="res://scripts/floor_button.gd" id="11"]
 [ext_resource type="Script" uid="uid://ctayisjm6xu68" path="res://scripts/mini_bulb.gd" id="12"]
-[ext_resource type="PackedScene" path="res://prefabs/props/barrel.tscn" id="p_barrel"]
-[ext_resource type="PackedScene" path="res://prefabs/props/barrel_lying.tscn" id="p_barrel_lying"]
-[ext_resource type="PackedScene" path="res://prefabs/props/cobweb.tscn" id="p_cobweb"]
-[ext_resource type="PackedScene" path="res://prefabs/props/cobweb_spider.tscn" id="p_cobweb_spider"]
-[ext_resource type="PackedScene" path="res://prefabs/props/dust.tscn" id="p_dust"]
-[ext_resource type="PackedScene" path="res://prefabs/props/edge_web.tscn" id="p_edge_web"]
-[ext_resource type="PackedScene" path="res://prefabs/props/exposed_bricks.tscn" id="p_exposed_bricks"]
-[ext_resource type="PackedScene" path="res://prefabs/props/fan.tscn" id="p_fan"]
-[ext_resource type="PackedScene" path="res://prefabs/props/jar.tscn" id="p_jar"]
-[ext_resource type="PackedScene" path="res://prefabs/props/pipe.tscn" id="p_pipe"]
-[ext_resource type="PackedScene" path="res://prefabs/props/rope_hook.tscn" id="p_rope_hook"]
-[ext_resource type="PackedScene" path="res://prefabs/props/sack_pile.tscn" id="p_sack_pile"]
-[ext_resource type="PackedScene" path="res://prefabs/props/vent.tscn" id="p_vent"]
-[ext_resource type="PackedScene" path="res://prefabs/props/wall_crack.tscn" id="p_wall_crack"]
-[ext_resource type="PackedScene" path="res://prefabs/props/wall_socket.tscn" id="p_wall_socket"]
-[ext_resource type="PackedScene" path="res://prefabs/props/wall_switch.tscn" id="p_wall_switch"]
+[ext_resource type="PackedScene" path="res://prefabs/props/containers/barrel.tscn" id="p_barrel"]
+[ext_resource type="PackedScene" path="res://prefabs/props/containers/barrel_lying.tscn" id="p_barrel_lying"]
+[ext_resource type="PackedScene" path="res://prefabs/props/atmosphere/cobweb.tscn" id="p_cobweb"]
+[ext_resource type="PackedScene" path="res://prefabs/props/atmosphere/cobweb_spider.tscn" id="p_cobweb_spider"]
+[ext_resource type="PackedScene" path="res://prefabs/props/atmosphere/dust.tscn" id="p_dust"]
+[ext_resource type="PackedScene" path="res://prefabs/props/atmosphere/edge_web.tscn" id="p_edge_web"]
+[ext_resource type="PackedScene" path="res://prefabs/props/walls/exposed_bricks.tscn" id="p_exposed_bricks"]
+[ext_resource type="PackedScene" path="res://prefabs/props/industrial/fan.tscn" id="p_fan"]
+[ext_resource type="PackedScene" path="res://prefabs/props/containers/jar.tscn" id="p_jar"]
+[ext_resource type="PackedScene" path="res://prefabs/props/industrial/pipe.tscn" id="p_pipe"]
+[ext_resource type="PackedScene" path="res://prefabs/props/hanging/rope_hook.tscn" id="p_rope_hook"]
+[ext_resource type="PackedScene" path="res://prefabs/props/containers/sack_pile.tscn" id="p_sack_pile"]
+[ext_resource type="PackedScene" path="res://prefabs/props/industrial/vent.tscn" id="p_vent"]
+[ext_resource type="PackedScene" path="res://prefabs/props/walls/wall_crack.tscn" id="p_wall_crack"]
+[ext_resource type="PackedScene" path="res://prefabs/props/electrical/wall_socket.tscn" id="p_wall_socket"]
+[ext_resource type="PackedScene" path="res://prefabs/props/electrical/wall_switch.tscn" id="p_wall_switch"]
 
 [node name="Level05" type="Node2D" unique_id=50892602]
 script = ExtResource("1")
@@ -101,6 +101,7 @@ size = Vector2(120, 140)
 position = Vector2(460, 1910)
 script = ExtResource("3")
 size = Vector2(120, 100)
+type = 1
 casts_shadow = true
 
 [node name="LedgeGoal" type="StaticBody2D" parent="." unique_id=1474407878]
@@ -133,6 +134,7 @@ size = Vector2(120, 55)
 position = Vector2(1500, 2020)
 script = ExtResource("3")
 size = Vector2(140, 160)
+type = 1
 casts_shadow = true
 
 [node name="LedgeB" type="StaticBody2D" parent="." unique_id=275486242]
@@ -144,6 +146,7 @@ size = Vector2(240, 40)
 position = Vector2(1760, 1440)
 script = ExtResource("3")
 size = Vector2(120, 100)
+type = 1
 casts_shadow = true
 chain_length = 1170.0
 

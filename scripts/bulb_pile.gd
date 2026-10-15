@@ -23,6 +23,8 @@ extends Node2D
 	set(value):
 		pattern = value
 		queue_redraw()
+## Se vero la lampadina non interagisce con questo oggetto.
+@export var disable_interaction := false
 
 const STATES := ["off", "cracked", "shattered", "burnt", "cracked", "off"]
 const EYES := ["x", "closed", "none", "x"]
@@ -40,6 +42,9 @@ var _cooldown := 0.0
 func _ready() -> void:
 	z_index = -5
 	if Engine.is_editor_hint():
+		return
+	if disable_interaction:
+		set_physics_process(false)
 		return
 	_area = Area2D.new()
 	_area.collision_layer = 0
