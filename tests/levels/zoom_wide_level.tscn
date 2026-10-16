@@ -1,0 +1,34 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/level.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/room_background.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/block.gd" id="3"]
+[ext_resource type="PackedScene" path="res://prefabs/gameplay/player.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://prefabs/gameplay/goal.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://prefabs/gameplay/zoom_trigger.tscn" id="6"]
+
+[node name="ZoomWideLevel" type="Node2D"]
+script = ExtResource("1")
+level_name = "Test zoom (oltre i bordi)"
+level_rect = Rect2(0, 0, 3000, 1800)
+
+[node name="Background" type="Node2D" parent="."]
+z_index = -10
+script = ExtResource("2")
+rect = Rect2(0, 0, 3000, 1800)
+
+[node name="Floor" type="StaticBody2D" parent="."]
+position = Vector2(1500, 1470)
+script = ExtResource("3")
+size = Vector2(3000, 100)
+
+[node name="Goal" parent="." instance=ExtResource("5")]
+position = Vector2(2800, 300)
+
+[node name="Player" parent="." instance=ExtResource("4")]
+position = Vector2(300, 1368)
+
+[node name="ZoomOut" parent="." instance=ExtResource("6")]
+position = Vector2(1500, 900)
+size = Vector2(200, 1800)
+zoom_after = 0.7

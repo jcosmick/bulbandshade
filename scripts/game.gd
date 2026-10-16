@@ -497,14 +497,23 @@ func _camera_target() -> Vector2:
 
 
 ## Posizione della telecamera più vicina a `target` che non mostra oltre i
-## bordi del livello.
+## bordi del livello. Se su un asse la vista (sopra i controlli) è più grande
+## del livello, su quell'asse la telecamera si centra sul livello: bande nere
+## uguali ai due lati. A zoom 1.0 la vista sta sempre nel livello.
 func _clamp_camera(target: Vector2) -> Vector2:
 	var view := get_viewport().get_visible_rect().size / _camera.zoom
 	var controls := CONTROLS_HEIGHT / _camera.zoom.y
 	var rect := level.level_rect
-	target.x = clampf(target.x, rect.position.x + view.x / 2.0, maxf(rect.position.x + view.x / 2.0, rect.end.x - view.x / 2.0))
-	target.y = clampf(target.y, rect.position.y + view.y / 2.0, rect.end.y + controls - view.y / 2.0)
+	target.x = _clamp_or_center(target.x, rect.position.x + view.x / 2.0, rect.end.x - view.x / 2.0)
+	target.y = _clamp_or_center(target.y, rect.position.y + view.y / 2.0, rect.end.y + controls - view.y / 2.0)
 	return target
+
+
+## `value` dentro [low, high]; se l'intervallo è vuoto (low > high), il centro.
+static func _clamp_or_center(value: float, low: float, high: float) -> float:
+	if low > high:
+		return (low + high) / 2.0
+	return clampf(value, low, high)
 
 
 ## Centro dell'area di gioco inquadrata (lo schermo sopra i controlli), in

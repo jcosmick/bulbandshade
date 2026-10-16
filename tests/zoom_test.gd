@@ -17,6 +17,7 @@ extends Node
 
 const ZOOM_LEVEL := "res://tests/levels/zoom_test_level.tscn"
 const FIXED_LEVEL := "res://tests/levels/zoom_fixed_level.tscn"
+const WIDE_LEVEL := "res://tests/levels/zoom_wide_level.tscn"
 const LEVEL_09 := "res://levels/level_09.tscn"
 ## Finestra 9:16: la viewport visibile è esattamente 1080x1920.
 const WINDOW_SIZE := Vector2i(540, 960)
@@ -49,6 +50,7 @@ var CASES: Array[Callable] = [
 	_case_fixed_level_ignores,
 	_case_restart_resets,
 	_case_level_09_unchanged,
+	_case_beyond_level_centered,
 ]
 
 
@@ -231,6 +233,29 @@ func _case_level_09_unchanged() -> void:
 		_report("level_09_unchanged", identical, ", ".join(details))
 	else:
 		_report("level_09_unchanged", true, "solo screenshot, senza --baseline nessun confronto")
+
+
+## Zoom-out 0.7 in un livello alto 1800: la vista sopra i controlli (circa
+## 2171 di altezza) supera level_rect in verticale e deve stare centrata, con
+## bande nere uguali sopra e sotto. In orizzontale (3000 di larghezza) no.
+func _case_beyond_level_centered() -> void:
+	await _fresh(WIDE_LEVEL)
+	await _cross(Vector2(1450, FLOOR_Y), Vector2(1700, FLOOR_Y))
+	# Oltre al tween, si lascia arrivare l'inseguimento morbido della telecamera.
+	await _wait(SETTLE + 1.0)
+	var m := _multiplier()
+	var view: Rect2 = game.visible_world_rect()
+	var rect: Rect2 = game.level.level_rect
+	# Fascia dei controlli in unità del mondo (la viewport è larga 1080).
+	var controls: float = game.CONTROLS_HEIGHT * view.size.x / get_viewport().get_visible_rect().size.x
+	var top := rect.position.y - view.position.y
+	var bottom := (view.end.y - controls) - rect.end.y
+	var inside_x := view.position.x >= rect.position.x - 0.5 and view.end.x <= rect.end.x + 0.5
+	var ok := _near(m, 0.7) and top > 1.0 and absf(top - bottom) < 1.0 and inside_x
+	_report("beyond_level_centered", ok,
+			"zoom %.3f (atteso 0.7), banda sopra %.1f, banda sotto %.1f, x %.0f-%.0f dentro il livello=%s" % [
+			m, top, bottom, view.position.x, view.end.x, inside_x])
+	await _shot("beyond_level_centered")
 
 
 # --- Utilità ------------------------------------------------------------------
