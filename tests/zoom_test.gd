@@ -60,6 +60,8 @@ var CASES: Array[Callable] = [
 	_case_respawn_without_checkpoint,
 	_case_checkpoint_mid_tween,
 	_case_restart_after_checkpoint,
+	_case_die_inside_trigger,
+	_case_checkpoint_during_cutscene,
 	_case_level_09_unchanged,
 	_case_beyond_level_centered,
 ]
@@ -353,6 +355,49 @@ func _case_restart_after_checkpoint() -> void:
 	await _shot("restart_after_checkpoint")
 
 
+## Morte dentro ZoomB (entrata, non ancora uscita) a zoom 1.25 senza checkpoint:
+## al respawn la lampadina ricompare all'inizio e "esce" da ZoomB dal lato
+## prima (1.25), ma l'uscita causata dal respawn non cambia lo zoom: resta 1.0.
+func _case_die_inside_trigger() -> void:
+	await _fresh()
+	await _cross(Vector2(1450, FLOOR_Y), Vector2(1700, FLOOR_Y))
+	await _wait(SETTLE)
+	var before := _multiplier()
+	await _tp(Vector2(2500, FLOOR_Y))
+	await _frames(3)
+	var first := await _die_and_respawn(START_SPAWN)
+	await _wait(SETTLE)
+	var m := _multiplier()
+	_report("die_inside_trigger", _near(before, 1.25) and _near(first, 1.0) and _near(m, 1.0),
+			"prima della morte %.3f, primo frame dopo il respawn %.3f, %.1f s dopo %.3f (atteso 1.0)" % [
+			before, first, SETTLE, m])
+	await _shot("die_inside_trigger")
+
+
+## Cutscene vera (Cutscene) con una richiesta a 1.25 in attesa quando si tocca
+## il checkpoint: si salva lo zoom che il giocatore avrà, 1.25. Poi, finita la
+## cutscene, ZoomB porta a 1.6 e alla morte si rinasce a 1.25.
+func _case_checkpoint_during_cutscene() -> void:
+	await _fresh()
+	var cutscene := _start_real_cutscene()
+	await _frames(2)
+	var focused: bool = game.camera_focus == cutscene
+	await _cross(Vector2(1450, FLOOR_Y), Vector2(1700, FLOOR_Y))
+	await _reach_checkpoint()
+	var during := _multiplier()
+	cutscene.released = true
+	await _wait(SETTLE)
+	var released := _multiplier()
+	await _cross(Vector2(2450, FLOOR_Y), Vector2(2700, FLOOR_Y))
+	await _wait(SETTLE)
+	var first := await _die_and_respawn(CHECKPOINT_SPAWN)
+	var ok := focused and _near(during, 1.0) and _near(released, 1.25) and _near(first, 1.25)
+	_report("checkpoint_during_cutscene", ok,
+			"camera_focus della cutscene=%s, durante %.3f (atteso 1.0), dopo il rilascio %.3f (atteso 1.25), primo frame dopo il respawn %.3f (atteso 1.25)" % [
+			focused, during, released, first])
+	await _shot("checkpoint_during_cutscene")
+
+
 ## Regressione: senza trigger level_09 si vede come prima. Gli screenshot si
 ## confrontano con quelli di --baseline, se c'è.
 func _case_level_09_unchanged() -> void:
@@ -406,6 +451,17 @@ func _start_cutscene() -> void:
 	game.level.add_child(focus)
 	focus.global_position = game.player.global_position
 	game.camera_focus = focus
+
+
+## Avvia una Cutscene vera (tests/zoom_test_cutscene.gd) nel livello: tiene
+## camera_focus finché non si mette `released` a true. Restituisce il nodo.
+func _start_real_cutscene() -> Node:
+	var cutscene: Cutscene = preload("res://tests/zoom_test_cutscene.gd").new()
+	game.level.add_child(cutscene)
+	# Senza owner la chiave in Cutscene._seen è "": la si toglie per poterla rivedere.
+	Cutscene._seen.erase("")
+	cutscene.start(game)
+	return cutscene
 
 
 ## Porta la lampadina sul checkpoint del livello di test (tra ZoomA e ZoomB).

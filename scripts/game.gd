@@ -12,6 +12,12 @@ const DARK_BRIGHT := Color(0.52, 0.52, 0.6)
 const LIT := Color(0.95, 0.9, 0.82)
 ## Secondi tra il cortocircuito e la ricomparsa al checkpoint.
 const RESPAWN_DELAY := 1.0
+## Frame di fisica dopo il respawn in cui request_zoom non fa niente: il
+## teletrasporto al checkpoint fa "uscire" la lampadina dallo Zoom trigger in
+## cui è morta (Godot lo segnala due frame dopo) e quell'uscita non deve
+## cambiare lo zoom del checkpoint. Ferma com'è, la lampadina non può uscire
+## davvero da un trigger in così poco tempo.
+const RESPAWN_ZOOM_GRACE_FRAMES := 3
 ## Velocità con cui la telecamera raggiunge la lampadina (livelli grandi).
 const CAMERA_FOLLOW_SPEED := 8.0
 ## Larghezza di livello mostrata sullo schermo nei livelli grandi.
@@ -72,13 +78,14 @@ var _zoom_duration := 0.0
 var _zoom_elapsed := 0.0
 var _zoom_transition := Tween.TRANS_SINE
 var _zoom_easing := Tween.EASE_IN_OUT
-## Richiesta di zoom arrivata durante una cutscene (camera_focus impostato):
-## [moltiplicatore, durata, transition, easing], o vuota. Conta solo l'ultima e
-## si applica quando camera_focus torna null.
-var _pending_zoom: Array = []
+## Richiesta di zoom arrivata durante una cutscene (camera_focus impostato), o
+## null. Conta solo l'ultima e si applica quando camera_focus torna null.
+var _pending_zoom: ZoomRequest
 ## Moltiplicatore target salvato all'ultimo checkpoint: al respawn si riparte
 ## da qui (1.0 se nel livello non è stato raggiunto nessun checkpoint).
 var _checkpoint_zoom := 1.0
+## Engine.get_physics_frames() all'ultimo respawn (vedi RESPAWN_ZOOM_GRACE_FRAMES).
+var _respawn_physics_frame := -RESPAWN_ZOOM_GRACE_FRAMES - 1
 
 
 func _ready() -> void:
@@ -229,10 +236,10 @@ func _process(delta: float) -> void:
 		load_level(level_index)
 		return
 	if _follow:
-		if not _pending_zoom.is_empty() and not is_instance_valid(camera_focus):
+		if _pending_zoom and not is_instance_valid(camera_focus):
 			var pending := _pending_zoom
-			_pending_zoom = []
-			request_zoom.callv(pending)
+			_pending_zoom = null
+			request_zoom(pending.multiplier, pending.duration, pending.transition, pending.easing)
 		_step_zoom(delta)
 		_update_focus_y()
 		_camera.position = _camera.position.lerp(_camera_target(), 1.0 - exp(-CAMERA_FOLLOW_SPEED * delta))
@@ -253,8 +260,9 @@ func _on_checkpoint_reached(checkpoint: Checkpoint) -> void:
 	checkpoint.active = true
 	Sfx.play("checkpoint", -6.0, 0.0)
 	_spawn_point = checkpoint.spawn_position()
-	# Il target, non il valore a metà di una transizione.
-	_checkpoint_zoom = _zoom_target
+	# Lo zoom che il giocatore avrà: quello della richiesta in attesa della
+	# cutscene, se c'è, se no il target (non il valore a metà di una transizione).
+	_checkpoint_zoom = _pending_zoom.multiplier if _pending_zoom else _zoom_target
 
 
 func _on_player_died() -> void:
@@ -267,8 +275,9 @@ func _on_player_died() -> void:
 		box.reset()
 	for jar in get_tree().get_nodes_in_group("jars"):
 		jar.reset()
-	_pending_zoom = []
+	_pending_zoom = null
 	player.respawn(_spawn_point)
+	_respawn_physics_frame = Engine.get_physics_frames()
 	_focus_y = player.global_position.y
 	if _follow:
 		# Lo zoom del checkpoint subito, senza transizione, prima della telecamera.
@@ -567,12 +576,15 @@ func reachable_view_center(point: Vector2) -> Vector2:
 ## transizione è in corso, la nuova parte dallo zoom attuale. Nei livelli che
 ## stanno nello schermo (telecamera ferma) non fa niente. Durante una
 ## cutscene (camera_focus impostato) la richiesta resta in attesa e si applica
-## al rilascio di camera_focus. Lo chiamano gli Zoom trigger.
+## al rilascio di camera_focus. Subito dopo un respawn le richieste si ignorano
+## (vedi RESPAWN_ZOOM_GRACE_FRAMES). Lo chiamano gli Zoom trigger.
 func request_zoom(multiplier: float, duration := 0.8, transition := Tween.TRANS_SINE, easing := Tween.EASE_IN_OUT) -> void:
 	if not _follow:
 		return
+	if Engine.get_physics_frames() - _respawn_physics_frame <= RESPAWN_ZOOM_GRACE_FRAMES:
+		return
 	if is_instance_valid(camera_focus):
-		_pending_zoom = [multiplier, duration, transition, easing]
+		_pending_zoom = ZoomRequest.new(multiplier, duration, transition, easing)
 		return
 	_zoom_from = _zoom_multiplier
 	_zoom_target = multiplier
@@ -584,14 +596,9 @@ func request_zoom(multiplier: float, duration := 0.8, transition := Tween.TRANS_
 		_set_zoom_multiplier(multiplier)
 
 
-## Moltiplicatore a cui sta andando la telecamera (a fine transizione).
-func zoom_target() -> float:
-	return _zoom_target
-
-
 ## Torna al moltiplicatore 1.0, subito, annullando la transizione in corso.
 func _reset_zoom() -> void:
-	_pending_zoom = []
+	_pending_zoom = null
 	_apply_zoom_now(1.0)
 
 
@@ -616,7 +623,23 @@ func _step_zoom(delta: float) -> void:
 				_zoom_elapsed, _zoom_duration, _zoom_transition, _zoom_easing))
 
 
+## Unico punto che scrive _camera.zoom: zoom base × moltiplicatore `value`.
 func _set_zoom_multiplier(value: float) -> void:
 	_zoom_multiplier = value
 	var zoom := _zoom_base * value
 	_camera.zoom = Vector2(zoom, zoom)
+
+
+## Una richiesta di zoom (gli argomenti di request_zoom), tenuta in attesa
+## durante le cutscene.
+class ZoomRequest:
+	var multiplier: float
+	var duration: float
+	var transition: Tween.TransitionType
+	var easing: Tween.EaseType
+
+	func _init(p_multiplier: float, p_duration: float, p_transition: Tween.TransitionType, p_easing: Tween.EaseType) -> void:
+		multiplier = p_multiplier
+		duration = p_duration
+		transition = p_transition
+		easing = p_easing
