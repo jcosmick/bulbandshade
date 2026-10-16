@@ -46,6 +46,12 @@ Entrambi usano lo script `scripts/parallax_props.gd`.
 - **Più distanze**: aggiungi più istanze con `scroll_scale` diversi. Il layer
   più lontano deve avere lo `z_index` più basso, e i layer di sfondo vanno
   tenuti tra -9 e -7 (sotto -10 finiscono dietro il muro).
+- **Wooom di passaggio** (solo primo piano): di default i prop sono muti.
+  Trascina un prop in `pass_sound_always` del Parallax per fargli fare il
+  wooom a ogni passaggio davanti alla telecamera, o in `pass_sound_once` per
+  farglielo fare solo la prima volta (anche dopo una morte; si azzera uscendo
+  dal livello). Se è in tutte e due vale `pass_sound_once`. Con le liste vuote
+  il layer non crea nessun lettore audio.
 
 | Layer | Prefab | `scroll_scale` | `z_index` |
 |---|---|---|---|

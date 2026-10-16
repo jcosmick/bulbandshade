@@ -59,6 +59,11 @@ const ROUND_ROBIN := {
 		preload("res://sounds/spark_2.wav"),
 		preload("res://sounds/spark_3.wav"),
 	],
+	"pass_by": [
+		preload("res://sounds/pass_by_1.wav"),
+		preload("res://sounds/pass_by_2.wav"),
+		preload("res://sounds/pass_by_3.wav"),
+	],
 }
 ## Pulsanti touch di gioco che hanno già un suono proprio (o nessuno).
 const SILENT_ACTIONS := [&"jump", &"flash"]

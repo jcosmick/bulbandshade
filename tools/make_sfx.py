@@ -1927,10 +1927,50 @@ def spark():
         save(f"spark_{i}.wav", room(out, 0.4, 0.12), peak=0.5)
 
 
+## Secondo in cui pass_by è al massimo (l'oggetto davanti alla telecamera): lo usa
+## anche parallax_props.gd (PASS_PEAK) per farlo partire in anticipo.
+PASS_PEAK = 0.45
+
+
+def pass_by():
+    # Oggetto in primo piano che sfreccia davanti alla telecamera: un "wooom" da cinema.
+    # Tre strati che crescono insieme fino al picco (l'oggetto al centro dello schermo) e
+    # poi si allontanano con l'effetto Doppler, cioè scendendo di tono:
+    # - aria spostata: rumore con un filtro risonante che si apre e poi si richiude scuro;
+    # - corpo "vooom": un ronzio grave con la frequenza che cala oltre il picco;
+    # - sub: un colpo di pressione bassissimo che si sente più che udirsi.
+    # Tre varianti: colore dell'aria, quanto è grave il corpo e lunghezza della coda.
+    for i in range(1, 4):
+        dur = PASS_PEAK + rng.uniform(0.75, 0.95)
+        t = t_of(dur)
+        n = len(t)
+        before = np.clip(t / PASS_PEAK, 0, 1)
+        after = np.maximum(t - PASS_PEAK, 0)
+        # Si gonfia sempre più in fretta mentre si avvicina, poi si spegne più lento.
+        swell = before ** 2.6 * np.exp(-after / rng.uniform(0.2, 0.28))
+        # Doppler: 1 al picco, sopra prima (si avvicina), sotto dopo (si allontana).
+        doppler = 1 + 0.12 * np.tanh((PASS_PEAK - t) / 0.08)
+        out = np.zeros(n)
+        bright = rng.uniform(1300, 1900)
+        cutoff = 250 + (bright - 250) * swell ** 0.7
+        air = svf_lowpass(noise(dur), cutoff * doppler, 2.2)
+        air = highpass(air, 120)
+        place(out, air * swell, 0.0, 0.9)
+        base = rng.uniform(62, 78)
+        f = base * doppler
+        phase = 2 * np.pi * np.cumsum(f) / RATE
+        body = np.tanh(1.8 * (np.sin(phase) + 0.45 * np.sin(2 * phase) + 0.2 * np.sin(3 * phase)))
+        body = svf_lowpass(body, 180 + 700 * swell, 1.2)
+        place(out, body * swell, 0.0, 0.55)
+        sub = np.sin(2 * np.pi * np.cumsum(np.full(n, 42.0) * doppler) / RATE)
+        place(out, sub * swell ** 1.5, 0.0, 0.45)
+        save(f"pass_by_{i}.wav", room(out, 1.1, 0.3, 0.02, 3000), peak=0.6)
+
+
 SFX = (jump, land, flash, flash_ready, flash_dud, drip, death, tap, button,
        checkpoint, collect, mini_flash, victory, step, shadow_step, push,
        flicker_off, flicker_on, shadow_dissolve, shadow_puff, can, glass_hit, fan, rustle,
-       spark)
+       spark, pass_by)
 ALL = {f.__name__: f for f in SFX + (music, music_dark, music_greenhouse, varianti)}
 
 OUT.mkdir(parents=True, exist_ok=True)

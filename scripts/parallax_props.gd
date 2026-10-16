@@ -19,6 +19,12 @@ extends Node2D
 @export var scale_with_depth := true
 ## scroll_scale.x con cui sono state salvate le scale dei figli.
 @export_storage var _depth := 1.0
+## Solo primo piano: prop che fanno il "wooom" ogni volta che passano davanti
+## alla telecamera. I prop che non sono in nessuna delle due liste sono muti.
+@export var pass_sound_always: Array[Node2D] = []
+## Solo primo piano: prop che fanno il "wooom" solo al primo passaggio (finché
+## si resta nel livello, anche dopo una morte). Vince su pass_sound_always.
+@export var pass_sound_once: Array[Node2D] = []
 
 ## Posizione nell'editor (locale al layer) di ogni figlio.
 var _anchors := {}
@@ -26,6 +32,27 @@ var _anchors := {}
 var _game: Node
 ## Solo per il layer in primo piano: stesso buio del gioco, applicato al suo canvas.
 var _front_dark: CanvasModulate
+## Solo primo piano: "wooom" quando un prop sfreccia davanti alla telecamera.
+var _pass_sound: AudioStreamPlayer2D
+## Il prop che sta facendo il wooom: il suono lo segue (panning da un lato all'altro).
+var _pass_target: Node2D
+## Distanza orizzontale di ogni prop dal centro dell'inquadratura al frame prima.
+var _pass_offsets := {}
+var _pass_cooldown := 0.0
+## I prop di pass_sound_once che hanno già fatto il loro wooom.
+var _pass_played := {}
+
+## Secondo in cui pass_by è al massimo (PASS_PEAK in tools/make_sfx.py): il
+## suono parte prima, così il picco cade quando il prop è al centro.
+const PASS_PEAK := 0.45
+## Velocità sullo schermo (px/s) sotto cui il prop non fa rumore e sopra cui
+## lo fa a pieno volume. Camminando la telecamera va a ~520 px/s e un prop a
+## profondità 1.8 attraversa lo schermo a ~940 px/s.
+const PASS_SPEED := Vector2(400.0, 900.0)
+## Oltre questa velocità è un salto della telecamera (respawn), non un passaggio.
+const PASS_MAX_SPEED := 4000.0
+## Secondi minimi tra due wooom (più lungo di PASS_PEAK: un prop ne fa uno solo).
+const PASS_COOLDOWN := 0.6
 
 
 func _ready() -> void:
@@ -43,9 +70,14 @@ func _ready() -> void:
 		_game = _game.get_parent()
 	if z_index >= 50:
 		_move_to_front_layer()
+	if scroll_scale.x > 1.0 and not (pass_sound_always.is_empty() and pass_sound_once.is_empty()):
+		_pass_sound = Sfx.make_player_2d("pass_by", self)
+		# Nessuna attenuazione con la distanza, solo il panning sinistra/destra.
+		_pass_sound.attenuation = 0.0
+		_pass_sound.max_distance = 100000.0
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		_update_depth_scale()
 		return
@@ -59,6 +91,53 @@ func _process(_delta: float) -> void:
 			var anchor := to_global(_anchors[child])
 			var reference: Vector2 = _game.reachable_view_center(anchor)
 			child.global_position = anchor + (Vector2.ONE - scroll_scale) * (center - reference)
+	if _pass_sound:
+		_update_pass_by(center, delta)
+
+
+## Fa partire il wooom quando un prop arriverà al centro dell'inquadratura tra
+## PASS_PEAK secondi, con volume e intonazione dalla sua velocità sullo schermo.
+func _update_pass_by(center: Vector2, delta: float) -> void:
+	_pass_cooldown -= delta
+	if _pass_sound.playing and is_instance_valid(_pass_target):
+		_pass_sound.global_position = _pass_target.global_position
+	if delta <= 0.0:
+		return
+	var view_height: float = _game.visible_world_rect().size.y
+	for child in _anchors:
+		if not is_instance_valid(child):
+			continue
+		var offset: float = child.global_position.x - center.x
+		var previous: float = _pass_offsets.get(child, offset)
+		_pass_offsets[child] = offset
+		if _pass_cooldown > 0.0 or not _makes_pass_sound(child):
+			continue
+		var speed := (offset - previous) / delta
+		if absf(speed) < PASS_SPEED.x or absf(speed) > PASS_MAX_SPEED:
+			continue
+		var arrival := -offset / speed
+		if arrival < 0.0 or arrival > PASS_PEAK:
+			continue
+		# Prop fuori dall'inquadratura in verticale: passa senza farsi sentire.
+		if absf(child.global_position.y - center.y) > view_height * 0.75:
+			continue
+		var strength := clampf(inverse_lerp(PASS_SPEED.x, PASS_SPEED.y, absf(speed)), 0.0, 1.0)
+		_pass_target = child
+		if child in pass_sound_once:
+			_pass_played[child] = true
+		_pass_sound.global_position = child.global_position
+		_pass_sound.volume_db = -10.0 + linear_to_db(lerpf(0.35, 1.0, strength))
+		_pass_sound.pitch_scale = lerpf(0.85, 1.08, strength) * randf_range(0.96, 1.04)
+		_pass_sound.play()
+		_pass_cooldown = PASS_COOLDOWN
+
+
+## True se il prop deve ancora farsi sentire: è in pass_sound_always, oppure
+## è in pass_sound_once e non ha ancora fatto il suo wooom.
+func _makes_pass_sound(child: Node2D) -> bool:
+	if child in pass_sound_once:
+		return not _pass_played.has(child)
+	return child in pass_sound_always
 
 
 ## L'acqua e gli altri overlay stanno su CanvasLayer 1-2, che coprono qualsiasi
