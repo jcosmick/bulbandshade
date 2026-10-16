@@ -16,6 +16,8 @@ extends Node2D
 	set(value):
 		length = value
 		queue_redraw()
+## Dondola piano appeso al filo (solo "ceiling"); falso = fermo.
+@export var swaying := true
 ## Scintille dai fili scoperti a intervalli casuali.
 @export var sparking := true
 ## Secondi minimi e massimi tra una scintilla e l'altra.
@@ -51,7 +53,7 @@ func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	_time += delta
-	if kind == "ceiling":
+	if kind == "ceiling" and swaying:
 		queue_redraw()
 	if not sparking:
 		return
@@ -68,7 +70,7 @@ func _socket_transform() -> Transform2D:
 	var angle: float
 	match kind:
 		"ceiling":
-			var sway := sin(_time * SWAY_SPEED) * SWAY
+			var sway := sin(_time * SWAY_SPEED) * SWAY if swaying else 0.0
 			return Transform2D(sway, Vector2.ZERO) * Transform2D(0.0, Vector2(0, length + BODY))
 		"wall":
 			attach = _arm_points()[2]

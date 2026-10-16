@@ -76,10 +76,15 @@ var _sound: AudioStreamPlayer2D
 var _touch_cooldown := 0.0
 var _spark_wait := 0.0
 var _time := 0.0
+## Seme dell'aspetto della lampadina impiccata, preso dalla posizione al
+## _ready: nei layer di parallasse la posizione cambia a ogni frame e la testa
+## scatterebbe da un lato all'altro.
+var _look_seed := 0
 
 
 func _ready() -> void:
 	z_index = -4
+	_look_seed = hash(position)
 	if Engine.is_editor_hint():
 		return
 	_points = _rest_points()
@@ -135,7 +140,23 @@ func _physics_process(delta: float) -> void:
 			else:
 				_points[i] += correction * 0.5
 				_points[i + 1] -= correction * 0.5
+	if sway == 0.0 and _is_nearly_still():
+		# Residui numerici del solver: la fune si ferma in verticale. Tiene
+		# l'allungamento dovuto alla gravità: tornare alla lunghezza a riposo
+		# la farebbe ricadere e rimbalzare su e giù all'infinito.
+		for i in range(1, _points.size()):
+			_points[i].x = 0.0
+		_previous = _points.duplicate()
 	queue_redraw()
+
+
+## Fune quasi verticale e quasi senza velocità: oscillazione sotto la soglia
+## visibile, solo tremolio.
+func _is_nearly_still() -> bool:
+	for i in range(1, _points.size()):
+		if absf(_points[i].x) > 1.5 or (_points[i] - _previous[i]).length() > 0.15:
+			return false
+	return true
 
 
 ## Spinge fuori dalla capsula della lampadina i punti della fune e passa loro
@@ -249,7 +270,8 @@ func _draw() -> void:
 func _draw_hanged(base: Transform2D) -> void:
 	# Ogni lampadina ha la testa reclinata in modo diverso (fisso per posizione).
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(position)
+	# Nell'editor segue la posizione, così spostandola si vede l'aspetto vero.
+	rng.seed = hash(position) if Engine.is_editor_hint() else _look_seed
 	var head_tilt := rng.randf_range(0.12, 0.35) * (1.0 if rng.randf() < 0.5 else -1.0)
 	var bulb := base * Transform2D(head_tilt, Vector2.ZERO) * Transform2D(0.0, Vector2(0, -NECK_Y))
 	DeadBulb.draw_bulb(self, bulb, "off", "x", rng.randi())
