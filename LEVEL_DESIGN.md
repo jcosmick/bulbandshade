@@ -174,6 +174,12 @@ Come si comporta:
   trigger con il valore `1.0` dal lato giusto.
 - Se si attraversa un trigger mentre lo zoom sta ancora cambiando, la nuova
   transizione parte dallo zoom attuale, senza scatti.
+- Durante una **cutscene** (telecamera su `camera_focus`) i trigger non
+  cambiano l'inquadratura: la richiesta resta in attesa e, se se ne
+  attraversano più di uno, conta l'ultimo. Quando la cutscene finisce
+  (`camera_focus` torna null) parte la transizione verso quello zoom, con la
+  `duration` e l'easing del trigger. Le cutscene non impostano lo zoom da sole.
+  Caricare, ricominciare o morire scarta la richiesta in attesa.
 - La telecamera continua a inseguire la lampadina come sempre: il margine del
   salto e la velocità di inseguimento restano in pixel del livello.
 - Caricare o ricominciare il livello, o cambiare la dimensione della

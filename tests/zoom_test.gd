@@ -48,6 +48,10 @@ var CASES: Array[Callable] = [
 	_case_vertical_axis,
 	_case_fixed_level_ignores,
 	_case_restart_resets,
+	_case_cutscene_holds,
+	_case_cutscene_last_wins,
+	_case_cutscene_restart,
+	_case_cutscene_respawn,
 	_case_level_09_unchanged,
 ]
 
@@ -211,6 +215,75 @@ func _case_restart_resets() -> void:
 	await _shot("restart_resets")
 
 
+## Durante una cutscene (camera_focus impostato, come fa Cutscene) un trigger
+## attraversato non cambia lo zoom; al rilascio parte il tween verso il suo target.
+func _case_cutscene_holds() -> void:
+	await _fresh()
+	_start_cutscene()
+	await _cross(Vector2(1450, FLOOR_Y), Vector2(1700, FLOOR_Y))
+	await _wait(SETTLE)
+	var during := _multiplier()
+	game.camera_focus = null
+	await _wait(0.3)
+	var mid := _multiplier()
+	await _wait(SETTLE)
+	var m := _multiplier()
+	_report("cutscene_holds", _near(during, 1.0) and mid > 1.01 and mid < 1.24 and _near(m, 1.25),
+			"durante la cutscene %.3f (atteso 1.0), 0.3 s dopo %.3f, finale %.3f (atteso 1.25)" % [
+			during, mid, m])
+	await _shot("cutscene_holds")
+
+
+## Più trigger attraversati durante la cutscene: al rilascio vale l'ultimo.
+func _case_cutscene_last_wins() -> void:
+	await _fresh()
+	_start_cutscene()
+	await _cross(Vector2(1450, FLOOR_Y), Vector2(1700, FLOOR_Y))
+	await _cross(Vector2(2450, FLOOR_Y), Vector2(2700, FLOOR_Y))
+	await _wait(SETTLE)
+	var during := _multiplier()
+	game.camera_focus = null
+	await _wait(SETTLE)
+	var m := _multiplier()
+	_report("cutscene_last_wins", _near(during, 1.0) and _near(m, 1.6),
+			"durante la cutscene %.3f (atteso 1.0), dopo il rilascio %.3f (atteso 1.6, l'ultimo)" % [
+			during, m])
+	await _shot("cutscene_last_wins")
+
+
+## Restart durante una cutscene con una richiesta in attesa: si riparte da 1.0
+## e la richiesta non si applica dopo.
+func _case_cutscene_restart() -> void:
+	await _fresh()
+	_start_cutscene()
+	await _cross(Vector2(1450, FLOOR_Y), Vector2(1700, FLOOR_Y))
+	await _press("restart")
+	await _until(func() -> bool: return not get_tree().paused, 10.0)
+	await _frames(3)
+	var right_after := _multiplier()
+	await _wait(SETTLE)
+	var m := _multiplier()
+	_report("cutscene_restart", _near(right_after, 1.0) and _near(m, 1.0),
+			"subito dopo il restart %.3f, %.1f s dopo %.3f (atteso 1.0)" % [right_after, SETTLE, m])
+	await _shot("cutscene_restart")
+
+
+## Il respawn scarta la richiesta in attesa: al rilascio della cutscene lo zoom
+## non cambia.
+func _case_cutscene_respawn() -> void:
+	await _fresh()
+	_start_cutscene()
+	await _cross(Vector2(1450, FLOOR_Y), Vector2(1700, FLOOR_Y))
+	game.player.die()
+	await _wait(game.RESPAWN_DELAY + 0.3)
+	game.camera_focus = null
+	await _wait(SETTLE)
+	var m := _multiplier()
+	_report("cutscene_respawn", _near(m, 1.0),
+			"dopo il respawn e il rilascio %.3f (atteso 1.0, nessun checkpoint)" % m)
+	await _shot("cutscene_respawn")
+
+
 ## Regressione: senza trigger level_09 si vede come prima. Gli screenshot si
 ## confrontano con quelli di --baseline, se c'è.
 func _case_level_09_unchanged() -> void:
@@ -234,6 +307,14 @@ func _case_level_09_unchanged() -> void:
 
 
 # --- Utilità ------------------------------------------------------------------
+
+## Inizia una "cutscene": la telecamera segue un nodo fermo dove sta la lampadina.
+func _start_cutscene() -> void:
+	var focus := Node2D.new()
+	game.level.add_child(focus)
+	focus.global_position = game.player.global_position
+	game.camera_focus = focus
+
 
 ## Ricarica da zero il livello indicato e misura la vista a moltiplicatore 1.0.
 func _fresh(path := ZOOM_LEVEL) -> void:
