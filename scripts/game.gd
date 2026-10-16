@@ -72,6 +72,13 @@ var _zoom_duration := 0.0
 var _zoom_elapsed := 0.0
 var _zoom_transition := Tween.TRANS_SINE
 var _zoom_easing := Tween.EASE_IN_OUT
+## Richiesta di zoom arrivata durante una cutscene (camera_focus impostato):
+## [moltiplicatore, durata, transition, easing], o vuota. Conta solo l'ultima e
+## si applica quando camera_focus torna null.
+var _pending_zoom: Array = []
+## Moltiplicatore target salvato all'ultimo checkpoint: al respawn si riparte
+## da qui (1.0 se nel livello non è stato raggiunto nessun checkpoint).
+var _checkpoint_zoom := 1.0
 
 
 func _ready() -> void:
@@ -140,6 +147,7 @@ func load_level(index: int) -> void:
 	goal.reached.connect(_on_goal_reached)
 	_spawn_point = player.global_position
 	_checkpoint = null
+	_checkpoint_zoom = 1.0
 	for checkpoint in get_tree().get_nodes_in_group("checkpoints"):
 		checkpoint.reached.connect(_on_checkpoint_reached)
 	_shadows.world = level
@@ -221,6 +229,10 @@ func _process(delta: float) -> void:
 		load_level(level_index)
 		return
 	if _follow:
+		if not _pending_zoom.is_empty() and not is_instance_valid(camera_focus):
+			var pending := _pending_zoom
+			_pending_zoom = []
+			request_zoom.callv(pending)
 		_step_zoom(delta)
 		_update_focus_y()
 		_camera.position = _camera.position.lerp(_camera_target(), 1.0 - exp(-CAMERA_FOLLOW_SPEED * delta))
@@ -241,6 +253,8 @@ func _on_checkpoint_reached(checkpoint: Checkpoint) -> void:
 	checkpoint.active = true
 	Sfx.play("checkpoint", -6.0, 0.0)
 	_spawn_point = checkpoint.spawn_position()
+	# Il target, non il valore a metà di una transizione.
+	_checkpoint_zoom = _zoom_target
 
 
 func _on_player_died() -> void:
@@ -253,9 +267,12 @@ func _on_player_died() -> void:
 		box.reset()
 	for jar in get_tree().get_nodes_in_group("jars"):
 		jar.reset()
+	_pending_zoom = []
 	player.respawn(_spawn_point)
 	_focus_y = player.global_position.y
 	if _follow:
+		# Lo zoom del checkpoint subito, senza transizione, prima della telecamera.
+		_apply_zoom_now(_checkpoint_zoom)
 		_camera.position = _camera_target()
 
 
@@ -548,10 +565,14 @@ func reachable_view_center(point: Vector2) -> Vector2:
 ## Chiede alla telecamera il moltiplicatore di zoom `multiplier` (dello zoom
 ## base), con una transizione di `duration` secondi (0 = subito). Se una
 ## transizione è in corso, la nuova parte dallo zoom attuale. Nei livelli che
-## stanno nello schermo (telecamera ferma) non fa niente. Lo chiamano gli
-## Zoom trigger.
+## stanno nello schermo (telecamera ferma) non fa niente. Durante una
+## cutscene (camera_focus impostato) la richiesta resta in attesa e si applica
+## al rilascio di camera_focus. Lo chiamano gli Zoom trigger.
 func request_zoom(multiplier: float, duration := 0.8, transition := Tween.TRANS_SINE, easing := Tween.EASE_IN_OUT) -> void:
 	if not _follow:
+		return
+	if is_instance_valid(camera_focus):
+		_pending_zoom = [multiplier, duration, transition, easing]
 		return
 	_zoom_from = _zoom_multiplier
 	_zoom_target = multiplier
@@ -570,11 +591,17 @@ func zoom_target() -> float:
 
 ## Torna al moltiplicatore 1.0, subito, annullando la transizione in corso.
 func _reset_zoom() -> void:
-	_zoom_from = 1.0
-	_zoom_target = 1.0
+	_pending_zoom = []
+	_apply_zoom_now(1.0)
+
+
+## Annulla la transizione in corso e mette subito il moltiplicatore `value`.
+func _apply_zoom_now(value: float) -> void:
+	_zoom_from = value
+	_zoom_target = value
 	_zoom_duration = 0.0
 	_zoom_elapsed = 0.0
-	_set_zoom_multiplier(1.0)
+	_set_zoom_multiplier(value)
 
 
 ## Avanza la transizione dello zoom (in _process, prima della telecamera).
