@@ -15,6 +15,7 @@ enum Axis { HORIZONTAL, VERTICAL }
 	set(value):
 		size = value
 		queue_redraw()
+		update_configuration_warnings()
 ## Orizzontale: prima = sinistra, dopo = destra. Verticale: prima = sopra, dopo = sotto.
 @export var axis := Axis.HORIZONTAL:
 	set(value):
@@ -25,11 +26,13 @@ enum Axis { HORIZONTAL, VERTICAL }
 	set(value):
 		zoom_before = value
 		queue_redraw()
+		update_configuration_warnings()
 ## Moltiplicatore dello zoom base uscendo dal lato "dopo".
 @export var zoom_after := 1.0:
 	set(value):
 		zoom_after = value
 		queue_redraw()
+		update_configuration_warnings()
 ## Durata della transizione in secondi (0 = cambio istantaneo).
 @export_range(0.0, 5.0, 0.05, "or_greater") var duration := 0.8
 ## Curva della transizione (vedi Tween.TransitionType) e il suo easing.
@@ -37,6 +40,9 @@ enum Axis { HORIZONTAL, VERTICAL }
 @export var easing: Tween.EaseType = Tween.EASE_IN_OUT
 
 const EDITOR_COLOR := Color(0.4, 0.8, 1.0, 0.8)
+## Viewport di riferimento del progetto, su cui si stimano i warning in editor.
+const REFERENCE_VIEW := Vector2(1080, 1920)
+const Game := preload("res://scripts/game.gd")
 
 
 func _ready() -> void:
@@ -61,6 +67,39 @@ func _on_body_exited(body: Node2D) -> void:
 	var offset := body.global_position - global_position
 	var after := (offset.x if axis == Axis.HORIZONTAL else offset.y) > 0.0
 	game.request_zoom(zoom_after if after else zoom_before, duration, transition, easing)
+
+
+## Warning in editor (triangolo giallo nell'albero della scena), stimati sulla
+## viewport di riferimento meno la striscia dei comandi. Senza un Level
+## antenato non si controlla niente.
+func _get_configuration_warnings() -> PackedStringArray:
+	var warnings := PackedStringArray()
+	var level := _level()
+	if level == null:
+		return warnings
+	var rect: Rect2 = level.level_rect
+	var area := REFERENCE_VIEW - Vector2(0, Game.CONTROLS_HEIGHT)
+	if not Game.scrolls(area, rect):
+		warnings.append("Il livello è fisso (sta tutto nello schermo, la telecamera non scorre): qui lo Zoom trigger non fa niente.")
+		return warnings
+	var base := Game.base_zoom(area, rect)
+	for side: Array in [["zoom_before", zoom_before], ["zoom_after", zoom_after]]:
+		var multiplier: float = side[1]
+		if multiplier <= 0.0:
+			continue
+		var view := area / (base * multiplier)
+		if view.x > rect.size.x + 1.0 or view.y > rect.size.y + 1.0:
+			warnings.append("%s = %s fa vedere oltre level_rect: la vista sopra i comandi è circa %d x %d, il livello %d x %d (viewport 1080x1920). A runtime la telecamera si centra sul livello e ai lati resta il nero." % [
+					side[0], multiplier, roundi(view.x), roundi(view.y), roundi(rect.size.x), roundi(rect.size.y)])
+	return warnings
+
+
+## Il Level che contiene il trigger, o null.
+func _level() -> Level:
+	var node := get_parent()
+	while node and not node is Level:
+		node = node.get_parent()
+	return node
 
 
 ## Il Game che possiede la telecamera (risalendo dal livello).

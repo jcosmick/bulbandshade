@@ -179,8 +179,21 @@ Come si comporta:
 - Caricare o ricominciare il livello, o cambiare la dimensione della
   finestra, riporta il moltiplicatore a `1.0`.
 - Nei livelli **fissi** (telecamera che non segue) i trigger non fanno niente.
-- Uno zoom-out che fa vedere oltre `level_rect` mostra il nero fuori dal
-  livello: scegli valori che restino dentro.
+- Se uno zoom-out fa vedere oltre `level_rect` su un asse, su quell'asse la
+  telecamera smette di inseguire e si centra sul livello: il nero fuori dal
+  livello resta in bande uguali ai due lati (sopra e sotto, o a sinistra e a
+  destra). Lo zoom non viene limitato, quindi scegli valori che restino dentro.
+- Lo Zoom trigger mostra nell'editor due **warning** (il triangolo giallo
+  nell'albero della scena):
+  - **zoom-out oltre i bordi**: `zoom_before` o `zoom_after` farebbero vedere
+    oltre il `level_rect` del Level che contiene il trigger. La stima usa la
+    viewport di riferimento 1080x1920 meno la striscia dei comandi (sui
+    telefoni più allungati si vede un po' di più in altezza). Il warning si
+    aggiorna mentre cambi i moltiplicatori; se cambi `level_rect`, riapri la
+    scena per ricalcolarlo. Fuori da un Level (es. aprendo il prefab da solo)
+    il controllo non si fa;
+  - **livello fisso**: il livello sta tutto nello schermo e la telecamera non
+    scorre, quindi il trigger non fa niente.
 - Sul Pixel 4a uno zoom-out porta a schermo più luci: prima di usare zoom-out
   ampi misura il framerate sul telefono.
 

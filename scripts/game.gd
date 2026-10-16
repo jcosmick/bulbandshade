@@ -453,9 +453,8 @@ func _layout() -> void:
 	# bande fuori dal livello, anche sui telefoni più allungati di 9:16 o sui
 	# tablet). Se così il livello esce dallo schermo in una direzione, la
 	# telecamera segue la lampadina.
-	var width := minf(rect.size.x, VIEW_WIDTH)
-	var zoom := maxf(area.x / width, area.y / rect.size.y)
-	_follow = rect.size.x * zoom > area.x + 1.0 or rect.size.y * zoom > area.y + 1.0
+	var zoom := base_zoom(area, rect)
+	_follow = scrolls(area, rect)
 	_zoom_base = zoom
 	_reset_zoom()
 	var level_top := 0.0
@@ -476,6 +475,20 @@ func _layout() -> void:
 	_buttons["flash"].set_center(Vector2(view.x - 410, row + 50))
 	_buttons["settings"].set_center(Vector2(view.x - 80, level_top + 80))
 	_flash_box.position = Vector2(40, level_top + 52)
+
+
+## Zoom base per un livello `rect` mostrato nell'area `area` sopra i
+## controlli (vedi _layout). Statico: lo usa anche lo Zoom trigger nell'editor.
+static func base_zoom(area: Vector2, rect: Rect2) -> float:
+	var width := minf(rect.size.x, VIEW_WIDTH)
+	return maxf(area.x / width, area.y / rect.size.y)
+
+
+## True se, allo zoom base, il livello esce dall'area e la telecamera lo
+## scorre seguendo la lampadina; false nei livelli fissi.
+static func scrolls(area: Vector2, rect: Rect2) -> bool:
+	var zoom := base_zoom(area, rect)
+	return rect.size.x * zoom > area.x + 1.0 or rect.size.y * zoom > area.y + 1.0
 
 
 ## Aggiorna l'altezza seguita: a terra è quella della lampadina; in aria resta
