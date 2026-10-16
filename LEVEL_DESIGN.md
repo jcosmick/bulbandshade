@@ -174,6 +174,11 @@ Come si comporta:
   trigger con il valore `1.0` dal lato giusto.
 - Se si attraversa un trigger mentre lo zoom sta ancora cambiando, la nuova
   transizione parte dallo zoom attuale, senza scatti.
+- **Checkpoint**: quando la lampadina tocca un checkpoint si salva lo zoom
+  verso cui sta andando la telecamera (quello finale, anche se la transizione
+  è ancora a metà). Morendo si rinasce con quello zoom, messo subito, senza
+  transizione. Se nel livello non si è toccato nessun checkpoint si rinasce a
+  `1.0`. Il restart azzera anche lo zoom salvato.
 - La telecamera continua a inseguire la lampadina come sempre: il margine del
   salto e la velocità di inseguimento restano in pixel del livello.
 - Caricare o ricominciare il livello, o cambiare la dimensione della
