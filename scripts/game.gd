@@ -76,6 +76,9 @@ var _zoom_easing := Tween.EASE_IN_OUT
 ## [moltiplicatore, durata, transition, easing], o vuota. Conta solo l'ultima e
 ## si applica quando camera_focus torna null.
 var _pending_zoom: Array = []
+## Moltiplicatore target salvato all'ultimo checkpoint: al respawn si riparte
+## da qui (1.0 se nel livello non è stato raggiunto nessun checkpoint).
+var _checkpoint_zoom := 1.0
 
 
 func _ready() -> void:
@@ -144,6 +147,7 @@ func load_level(index: int) -> void:
 	goal.reached.connect(_on_goal_reached)
 	_spawn_point = player.global_position
 	_checkpoint = null
+	_checkpoint_zoom = 1.0
 	for checkpoint in get_tree().get_nodes_in_group("checkpoints"):
 		checkpoint.reached.connect(_on_checkpoint_reached)
 	_shadows.world = level
@@ -249,6 +253,8 @@ func _on_checkpoint_reached(checkpoint: Checkpoint) -> void:
 	checkpoint.active = true
 	Sfx.play("checkpoint", -6.0, 0.0)
 	_spawn_point = checkpoint.spawn_position()
+	# Il target, non il valore a metà di una transizione.
+	_checkpoint_zoom = _zoom_target
 
 
 func _on_player_died() -> void:
@@ -265,6 +271,8 @@ func _on_player_died() -> void:
 	player.respawn(_spawn_point)
 	_focus_y = player.global_position.y
 	if _follow:
+		# Lo zoom del checkpoint subito, senza transizione, prima della telecamera.
+		_apply_zoom_now(_checkpoint_zoom)
 		_camera.position = _camera_target()
 
 
@@ -562,11 +570,16 @@ func zoom_target() -> float:
 ## Torna al moltiplicatore 1.0, subito, annullando la transizione in corso.
 func _reset_zoom() -> void:
 	_pending_zoom = []
-	_zoom_from = 1.0
-	_zoom_target = 1.0
+	_apply_zoom_now(1.0)
+
+
+## Annulla la transizione in corso e mette subito il moltiplicatore `value`.
+func _apply_zoom_now(value: float) -> void:
+	_zoom_from = value
+	_zoom_target = value
 	_zoom_duration = 0.0
 	_zoom_elapsed = 0.0
-	_set_zoom_multiplier(1.0)
+	_set_zoom_multiplier(value)
 
 
 ## Avanza la transizione dello zoom (in _process, prima della telecamera).

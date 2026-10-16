@@ -22,6 +22,9 @@ const LEVEL_09 := "res://levels/level_09.tscn"
 const WINDOW_SIZE := Vector2i(540, 960)
 ## Altezza dei piedi della lampadina sul pavimento alto del livello di test.
 const FLOOR_Y := 1368.0
+## Dove ricompare la lampadina: inizio del livello di test e CheckpointZoom.
+const START_SPAWN := Vector2(300, 1368)
+const CHECKPOINT_SPAWN := Vector2(2000, 1368)
 ## Tolleranza sul moltiplicatore osservato.
 const EPS := 0.005
 ## Più lungo della durata di default dei trigger (0.8 s).
@@ -52,6 +55,10 @@ var CASES: Array[Callable] = [
 	_case_cutscene_last_wins,
 	_case_cutscene_restart,
 	_case_cutscene_respawn,
+	_case_checkpoint_respawn,
+	_case_respawn_without_checkpoint,
+	_case_checkpoint_mid_tween,
+	_case_restart_after_checkpoint,
 	_case_level_09_unchanged,
 ]
 
@@ -284,6 +291,66 @@ func _case_cutscene_respawn() -> void:
 	await _shot("cutscene_respawn")
 
 
+## Zoom 1.25 (ZoomA), checkpoint, zoom 1.6 (ZoomB), morte: al respawn la vista
+## è a 1.25 dal primo frame disegnato.
+func _case_checkpoint_respawn() -> void:
+	await _fresh()
+	await _cross(Vector2(1450, FLOOR_Y), Vector2(1700, FLOOR_Y))
+	await _wait(SETTLE)
+	await _reach_checkpoint()
+	await _cross(Vector2(2450, FLOOR_Y), Vector2(2700, FLOOR_Y))
+	await _wait(SETTLE)
+	var before := _multiplier()
+	var first := await _die_and_respawn(CHECKPOINT_SPAWN)
+	var m := _multiplier()
+	_report("checkpoint_respawn", _near(before, 1.6) and _near(first, 1.25) and _near(m, 1.25),
+			"prima della morte %.3f, primo frame dopo il respawn %.3f, poi %.3f (atteso 1.25)" % [before, first, m])
+	await _shot("checkpoint_respawn")
+
+
+## Zoom senza checkpoint, poi morte: si rinasce a 1.0.
+func _case_respawn_without_checkpoint() -> void:
+	await _fresh()
+	await _cross(Vector2(1450, FLOOR_Y), Vector2(1700, FLOOR_Y))
+	await _wait(SETTLE)
+	var before := _multiplier()
+	var first := await _die_and_respawn(START_SPAWN)
+	_report("respawn_without_checkpoint", _near(before, 1.25) and _near(first, 1.0),
+			"prima della morte %.3f, primo frame dopo il respawn %.3f (atteso 1.0)" % [before, first])
+	await _shot("respawn_without_checkpoint")
+
+
+## Checkpoint toccato a metà della transizione verso 1.25: si salva il target.
+func _case_checkpoint_mid_tween() -> void:
+	await _fresh()
+	await _cross(Vector2(1450, FLOOR_Y), Vector2(1700, FLOOR_Y))
+	await _wait(0.2)
+	await _reach_checkpoint()
+	var mid := _multiplier()
+	await _cross(Vector2(2450, FLOOR_Y), Vector2(2700, FLOOR_Y))
+	await _wait(SETTLE)
+	var first := await _die_and_respawn(CHECKPOINT_SPAWN)
+	_report("checkpoint_mid_tween", mid > 1.01 and mid < 1.24 and _near(first, 1.25),
+			"al checkpoint %.3f (a metà), primo frame dopo il respawn %.3f (atteso 1.25)" % [mid, first])
+	await _shot("checkpoint_mid_tween")
+
+
+## Checkpoint a 1.25, restart: si riparte da 1.0, anche morendo subito dopo.
+func _case_restart_after_checkpoint() -> void:
+	await _fresh()
+	await _cross(Vector2(1450, FLOOR_Y), Vector2(1700, FLOOR_Y))
+	await _wait(SETTLE)
+	await _reach_checkpoint()
+	await _press("restart")
+	await _until(func() -> bool: return not get_tree().paused, 10.0)
+	await _frames(3)
+	var after_restart := _multiplier()
+	var first := await _die_and_respawn(START_SPAWN)
+	_report("restart_after_checkpoint", _near(after_restart, 1.0) and _near(first, 1.0),
+			"dopo il restart %.3f, primo frame dopo il respawn %.3f (atteso 1.0)" % [after_restart, first])
+	await _shot("restart_after_checkpoint")
+
+
 ## Regressione: senza trigger level_09 si vede come prima. Gli screenshot si
 ## confrontano con quelli di --baseline, se c'è.
 func _case_level_09_unchanged() -> void:
@@ -314,6 +381,27 @@ func _start_cutscene() -> void:
 	game.level.add_child(focus)
 	focus.global_position = game.player.global_position
 	game.camera_focus = focus
+
+
+## Porta la lampadina sul checkpoint del livello di test (tra ZoomA e ZoomB).
+func _reach_checkpoint() -> void:
+	await _tp(CHECKPOINT_SPAWN)
+	await _frames(3)
+
+
+## Fa morire la lampadina e aspetta che ricompaia in `spawn`. Restituisce il
+## moltiplicatore del primo frame disegnato con la lampadina già lì.
+func _die_and_respawn(spawn: Vector2) -> float:
+	var first := [-1.0]
+	var sample := func() -> void:
+		if first[0] < 0.0 and game.player.global_position.distance_to(spawn) < 1.0:
+			first[0] = _multiplier()
+	RenderingServer.frame_pre_draw.connect(sample)
+	game.player.die()
+	await _until(func() -> bool: return first[0] >= 0.0, 3.0)
+	RenderingServer.frame_pre_draw.disconnect(sample)
+	await _frames(3)
+	return first[0]
 
 
 ## Ricarica da zero il livello indicato e misura la vista a moltiplicatore 1.0.
