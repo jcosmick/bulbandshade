@@ -12,7 +12,8 @@ extends Node
 ## quelli della cartella indicata (fatti prima di una modifica). Anche a parità di codice
 ## due esecuzioni differiscono di qualche decina di pixel in punti isolati (animazioni
 ## casuali): si tollera fino a MAX_NOISE_PX pixel per screenshot. Uno spostamento o
-## uno zoom diverso della telecamera ne cambia centinaia di migliaia.
+## uno zoom diverso della telecamera ne cambia centinaia di migliaia. Senza
+## --baseline il caso level_09_unchanged risulta SALTATO (non verificato).
 ## Per aggiungere un caso: scrivere una funzione _case_<nome>() e metterla in CASES.
 
 const ZOOM_LEVEL := "res://tests/levels/zoom_test_level.tscn"
@@ -31,7 +32,8 @@ const EPS := 0.005
 ## Più lungo della durata di default dei trigger (0.8 s).
 const SETTLE := 1.1
 ## Pixel diversi tollerati per screenshot nel confronto con --baseline.
-const MAX_NOISE_PX := 500
+## Misurati: 0-17 px tra due esecuzioni dello stesso codice.
+const MAX_NOISE_PX := 100
 
 var game: Node
 var out_dir := "user://zoom_test"
@@ -64,6 +66,8 @@ var CASES: Array[Callable] = [
 	_case_checkpoint_during_cutscene,
 	_case_level_09_unchanged,
 	_case_beyond_level_centered,
+	_case_beyond_level_centered_x,
+	_case_resize_resets,
 ]
 
 
@@ -95,11 +99,16 @@ func _run() -> void:
 			await case.call()
 	print("--- RIEPILOGO ---")
 	var failed := 0
+	var skipped := 0
 	for line in _results:
 		print(line)
-		if "FALLITO" in line:
+		if ": FALLITO (" in line:
 			failed += 1
+		elif ": SALTATO (" in line:
+			skipped += 1
 	print("CASI FALLITI: %d su %d" % [failed, _results.size()])
+	if skipped:
+		print("CASI SALTATI: %d (non verificati)" % skipped)
 	get_tree().quit()
 
 
@@ -178,11 +187,20 @@ func _case_zero_duration() -> void:
 	await _fresh()
 	await _tp(Vector2(3450, FLOOR_Y))
 	await _frames(3)
+	# Moltiplicatore del primo frame disegnato dopo l'uscita da ZoomCut.
+	var first := [-1.0]
+	var exited := [false]
+	var on_exit := func(_body: Node2D) -> void: exited[0] = true
+	var sample := func() -> void:
+		if exited[0] and first[0] < 0.0:
+			first[0] = _multiplier()
+	game.level.get_node("ZoomCut").body_exited.connect(on_exit)
+	RenderingServer.frame_pre_draw.connect(sample)
 	await _tp(Vector2(3700, FLOOR_Y))
-	await _frames(2)
-	await get_tree().process_frame
-	var m := _multiplier()
-	_report("zero_duration", _near(m, 1.4), "durata 0, subito dopo l'uscita %.3f (atteso 1.4)" % m)
+	await _until(func() -> bool: return first[0] >= 0.0, 2.0)
+	RenderingServer.frame_pre_draw.disconnect(sample)
+	var m: float = first[0]
+	_report("zero_duration", _near(m, 1.4), "durata 0, primo frame dopo l'uscita %.3f (atteso 1.4)" % m)
 	await _shot("zero_duration")
 
 
@@ -226,15 +244,16 @@ func _case_restart_resets() -> void:
 	await _shot("restart_resets")
 
 
-## Durante una cutscene (camera_focus impostato, come fa Cutscene) un trigger
-## attraversato non cambia lo zoom; al rilascio parte il tween verso il suo target.
+## Durante una Cutscene vera (camera_focus impostato) un trigger attraversato
+## non cambia lo zoom; alla fine della cutscene parte il tween verso il suo target.
 func _case_cutscene_holds() -> void:
 	await _fresh()
-	_start_cutscene()
+	var cutscene := _start_real_cutscene()
 	await _cross(Vector2(1450, FLOOR_Y), Vector2(1700, FLOOR_Y))
 	await _wait(SETTLE)
 	var during := _multiplier()
-	game.camera_focus = null
+	cutscene.released = true
+	await _frames(1)
 	await _wait(0.3)
 	var mid := _multiplier()
 	await _wait(SETTLE)
@@ -417,7 +436,7 @@ func _case_level_09_unchanged() -> void:
 	if baseline_dir:
 		_report("level_09_unchanged", identical, ", ".join(details))
 	else:
-		_report("level_09_unchanged", true, "solo screenshot, senza --baseline nessun confronto")
+		_skip("level_09_unchanged", "senza --baseline nessun confronto, fatti solo gli screenshot")
 
 
 ## Zoom-out 0.7 in un livello alto 1800: la vista sopra i controlli (circa
@@ -441,6 +460,50 @@ func _case_beyond_level_centered() -> void:
 			"zoom %.3f (atteso 0.7), banda sopra %.1f, banda sotto %.1f, x %.0f-%.0f dentro il livello=%s" % [
 			m, top, bottom, view.position.x, view.end.x, inside_x])
 	await _shot("beyond_level_centered")
+
+
+## Zoom-out 0.3 (ZoomOutFar) nel livello 3000x1800: la vista (circa 3600 x
+## 5067 sopra i controlli) supera level_rect su entrambi gli assi e deve stare
+## centrata su entrambi: bande nere uguali a sinistra e a destra, sopra e sotto.
+func _case_beyond_level_centered_x() -> void:
+	await _fresh(WIDE_LEVEL)
+	await _cross(Vector2(2300, FLOOR_Y), Vector2(2500, FLOOR_Y))
+	await _wait(SETTLE + 1.0)
+	var m := _multiplier()
+	var view: Rect2 = game.visible_world_rect()
+	var rect: Rect2 = game.level.level_rect
+	var controls: float = game.CONTROLS_HEIGHT * view.size.x / get_viewport().get_visible_rect().size.x
+	var left := rect.position.x - view.position.x
+	var right := view.end.x - rect.end.x
+	var top := rect.position.y - view.position.y
+	var bottom := (view.end.y - controls) - rect.end.y
+	var ok := _near(m, 0.3) and left > 1.0 and absf(left - right) < 1.0 \
+			and top > 1.0 and absf(top - bottom) < 1.0
+	_report("beyond_level_centered_x", ok,
+			"zoom %.3f (atteso 0.3), bande sinistra %.1f destra %.1f, sopra %.1f sotto %.1f" % [
+			m, left, right, top, bottom])
+	await _shot("beyond_level_centered_x")
+
+
+## Un ridimensionamento della finestra (che rifà il layout) riporta il
+## moltiplicatore a 1.0, come un caricamento.
+func _case_resize_resets() -> void:
+	await _fresh()
+	await _cross(Vector2(1450, FLOOR_Y), Vector2(1700, FLOOR_Y))
+	await _wait(SETTLE)
+	var before := _multiplier()
+	get_window().size = WINDOW_SIZE + Vector2i(0, 40)
+	await _frames(3)
+	get_window().size = WINDOW_SIZE
+	await _frames(3)
+	await get_tree().process_frame
+	var m := _multiplier()
+	await _wait(SETTLE)
+	var later := _multiplier()
+	_report("resize_resets", _near(before, 1.25) and _near(m, 1.0) and _near(later, 1.0),
+			"prima %.3f, dopo il ridimensionamento %.3f, %.1f s dopo %.3f (atteso 1.0)" % [
+			before, m, SETTLE, later])
+	await _shot("resize_resets")
 
 
 # --- Utilità ------------------------------------------------------------------
@@ -548,7 +611,16 @@ func _until(condition: Callable, timeout: float) -> void:
 
 
 func _report(case_name: String, ok: bool, details: String) -> void:
-	var line := "CASO %s: %s (%s)" % [case_name, "OK" if ok else "FALLITO", details]
+	_result(case_name, "OK" if ok else "FALLITO", details)
+
+
+## Caso non verificato (né OK né FALLITO): compare nel riepilogo come SALTATO.
+func _skip(case_name: String, details: String) -> void:
+	_result(case_name, "SALTATO", details)
+
+
+func _result(case_name: String, status: String, details: String) -> void:
+	var line := "CASO %s: %s (%s)" % [case_name, status, details]
 	print(line)
 	_results.append(line)
 

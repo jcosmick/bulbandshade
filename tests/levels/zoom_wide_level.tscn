@@ -32,3 +32,8 @@ position = Vector2(300, 1368)
 position = Vector2(1500, 900)
 size = Vector2(200, 1800)
 zoom_after = 0.7
+
+[node name="ZoomOutFar" parent="." instance=ExtResource("6")]
+position = Vector2(2300, 900)
+size = Vector2(200, 1800)
+zoom_after = 0.3

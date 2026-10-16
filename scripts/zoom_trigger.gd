@@ -17,21 +17,16 @@ enum Axis { HORIZONTAL, VERTICAL }
 		queue_redraw()
 		update_configuration_warnings()
 ## Orizzontale: prima = sinistra, dopo = destra. Verticale: prima = sopra, dopo = sotto.
-@export var axis := Axis.HORIZONTAL:
-	set(value):
-		axis = value
-		queue_redraw()
+@export var axis := Axis.HORIZONTAL
 ## Moltiplicatore dello zoom base uscendo dal lato "prima" (< 1 allontana, > 1 avvicina).
 @export var zoom_before := 1.0:
 	set(value):
 		zoom_before = value
-		queue_redraw()
 		update_configuration_warnings()
 ## Moltiplicatore dello zoom base uscendo dal lato "dopo".
 @export var zoom_after := 1.0:
 	set(value):
 		zoom_after = value
-		queue_redraw()
 		update_configuration_warnings()
 ## Durata della transizione in secondi (0 = cambio istantaneo).
 @export_range(0.0, 5.0, 0.05, "or_greater") var duration := 0.8
@@ -113,7 +108,5 @@ func _game() -> Node:
 func _draw() -> void:
 	if not Engine.is_editor_hint():
 		return
+	# Solo il bordo dell'area: i valori si leggono nell'Inspector.
 	draw_rect(Rect2(-size / 2.0, size), EDITOR_COLOR, false, 4.0)
-	var sides := "← %s   %s →" if axis == Axis.HORIZONTAL else "↑ %s   %s ↓"
-	draw_string(ThemeDB.fallback_font, -size / 2.0 + Vector2(8, 26),
-		"zoom " + sides % [zoom_before, zoom_after], HORIZONTAL_ALIGNMENT_LEFT, -1, 22, EDITOR_COLOR)

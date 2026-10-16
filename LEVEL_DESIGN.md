@@ -153,7 +153,7 @@ l'inquadratura in un punto preciso del livello si usa uno **Zoom trigger**
 2. Imposta `size` perché l'area copra tutto il passaggio: per un corridoio
    un'area stretta e alta quanto il livello (es. `(200, H)`), per un pozzo
    un'area larga quanto il pozzo e bassa. Nell'editor si vede il bordo
-   azzurro dell'area, con i due valori di zoom.
+   azzurro dell'area (i valori di zoom si leggono nell'Inspector).
 3. Scegli `axis`:
    - **Horizontal**: "prima" = sinistra, "dopo" = destra.
    - **Vertical**: "prima" = sopra, "dopo" = sotto.
@@ -182,9 +182,13 @@ Come si comporta:
   Caricare, ricominciare o morire scarta la richiesta in attesa.
 - **Checkpoint**: quando la lampadina tocca un checkpoint si salva lo zoom
   verso cui sta andando la telecamera (quello finale, anche se la transizione
-  è ancora a metà). Morendo si rinasce con quello zoom, messo subito, senza
-  transizione. Se nel livello non si è toccato nessun checkpoint si rinasce a
-  `1.0`. Il restart azzera anche lo zoom salvato.
+  è ancora a metà; durante una cutscene, quello della richiesta in attesa).
+  Morendo si rinasce con quello zoom, messo subito, senza transizione. Se nel
+  livello non si è toccato nessun checkpoint si rinasce a `1.0`. Il restart
+  azzera anche lo zoom salvato.
+- Morendo **dentro** l'area di un trigger, il respawn al checkpoint fa uscire
+  la lampadina dall'area, ma quell'uscita non cambia lo zoom: vale lo zoom del
+  checkpoint.
 - La telecamera continua a inseguire la lampadina come sempre: il margine del
   salto e la velocità di inseguimento restano in pixel del livello.
 - Caricare o ricominciare il livello, o cambiare la dimensione della
