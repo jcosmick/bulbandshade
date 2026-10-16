@@ -1,0 +1,62 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/level.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/room_background.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/block.gd" id="3"]
+[ext_resource type="PackedScene" path="res://prefabs/gameplay/player.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://prefabs/gameplay/goal.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://prefabs/gameplay/zoom_trigger.tscn" id="6"]
+
+[node name="ZoomTestLevel" type="Node2D"]
+script = ExtResource("1")
+level_name = "Test zoom"
+level_rect = Rect2(0, 0, 6000, 3040)
+
+[node name="Background" type="Node2D" parent="."]
+z_index = -10
+script = ExtResource("2")
+rect = Rect2(0, 0, 6000, 3040)
+
+[node name="FloorUpper" type="StaticBody2D" parent="."]
+position = Vector2(2250, 1470)
+script = ExtResource("3")
+size = Vector2(4500, 100)
+
+[node name="FloorLower" type="StaticBody2D" parent="."]
+position = Vector2(3000, 2990)
+script = ExtResource("3")
+size = Vector2(6000, 100)
+
+[node name="LedgeVertical" type="StaticBody2D" parent="."]
+position = Vector2(5000, 1660)
+script = ExtResource("3")
+size = Vector2(1000, 40)
+
+[node name="Goal" parent="." instance=ExtResource("5")]
+position = Vector2(5800, 300)
+
+[node name="Player" parent="." instance=ExtResource("4")]
+position = Vector2(300, 1368)
+
+[node name="ZoomA" parent="." instance=ExtResource("6")]
+position = Vector2(1500, 760)
+size = Vector2(200, 1520)
+zoom_after = 1.25
+
+[node name="ZoomB" parent="." instance=ExtResource("6")]
+position = Vector2(2500, 760)
+size = Vector2(200, 1520)
+zoom_before = 1.25
+zoom_after = 1.6
+
+[node name="ZoomCut" parent="." instance=ExtResource("6")]
+position = Vector2(3500, 760)
+size = Vector2(200, 1520)
+zoom_after = 1.4
+duration = 0.0
+
+[node name="ZoomVertical" parent="." instance=ExtResource("6")]
+position = Vector2(5000, 1800)
+size = Vector2(1000, 200)
+axis = 1
+zoom_after = 1.3

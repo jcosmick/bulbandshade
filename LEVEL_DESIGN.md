@@ -141,6 +141,52 @@ Quindi `level_rect` deve coprire esattamente il livello: se è più grande si
 vedono zone vuote, se è più piccolo pezzi di livello restano fuori
 inquadratura (e le ombre si fermano al suo bordo).
 
+### Zoom trigger
+
+Lo zoom che il gioco calcola per far stare la stanza sopra i comandi è lo
+**zoom base**. Per vedere di più (un salto lungo, un'area ampia) o stringere
+l'inquadratura in un punto preciso del livello si usa uno **Zoom trigger**
+(`prefabs/gameplay/zoom_trigger.tscn`): una soglia che cambia il
+**moltiplicatore di zoom** quando la lampadina la attraversa.
+
+1. Trascina il prefab nel livello, come figlio diretto della radice.
+2. Imposta `size` perché l'area copra tutto il passaggio: per un corridoio
+   un'area stretta e alta quanto il livello (es. `(200, H)`), per un pozzo
+   un'area larga quanto il pozzo e bassa. Nell'editor si vede il bordo
+   azzurro dell'area, con i due valori di zoom.
+3. Scegli `axis`:
+   - **Horizontal**: "prima" = sinistra, "dopo" = destra.
+   - **Vertical**: "prima" = sopra, "dopo" = sotto.
+4. Imposta `zoom_before` (lato "prima") e `zoom_after` (lato "dopo").
+   Sono moltiplicatori dello zoom base: `1.0` = zoom normale, `< 1.0`
+   allontana (si vede di più), `> 1.0` avvicina. Così valgono uguali su ogni
+   telefono.
+5. Se serve, cambia `duration` (default 0.8 s; `0` = cambio netto),
+   `transition` ed `easing` (default sine, ease-in-out).
+
+Come si comporta:
+
+- Conta solo **il lato da cui la lampadina esce** dall'area: uscendo dopo si
+  passa a `zoom_after`, uscendo prima a `zoom_before`. All'ingresso non
+  succede niente, quindi entrare e uscire dallo stesso lato non cambia lo zoom.
+- Lo zoom resta così finché non si attraversa un altro trigger. Tornando
+  indietro si ritrova lo zoom di prima. Per tornare allo zoom normale metti un
+  trigger con il valore `1.0` dal lato giusto.
+- Se si attraversa un trigger mentre lo zoom sta ancora cambiando, la nuova
+  transizione parte dallo zoom attuale, senza scatti.
+- La telecamera continua a inseguire la lampadina come sempre: il margine del
+  salto e la velocità di inseguimento restano in pixel del livello.
+- Caricare o ricominciare il livello, o cambiare la dimensione della
+  finestra, riporta il moltiplicatore a `1.0`.
+- Nei livelli **fissi** (telecamera che non segue) i trigger non fanno niente.
+- Uno zoom-out che fa vedere oltre `level_rect` mostra il nero fuori dal
+  livello: scegli valori che restino dentro.
+- Sul Pixel 4a uno zoom-out porta a schermo più luci: prima di usare zoom-out
+  ampi misura il framerate sul telefono.
+
+Per provarli c'è il test `tests/zoom_test.tscn` (vedi l'intestazione dello
+script).
+
 ---
 
 ## 4. Prefab disponibili
@@ -150,7 +196,7 @@ Tutti in `prefabs/`, divisi in quattro cartelle:
 | Cartella | Cosa contiene | Sezioni qui sotto |
 |---|---|---|
 | `level_structures/` | Template, terreno, casse, vetro, finestre, acqua, pulsante: ciò che forma il percorso e le sue meccaniche | Struttura, Casse, Vetro, Luce, Acqua, `floor_button` |
-| `gameplay/` | Lampadina, arrivo, checkpoint, lucine collezionabili, suggerimento del flash | Giocatore e obiettivi, `flash_hint` |
+| `gameplay/` | Lampadina, arrivo, checkpoint, lucine collezionabili, suggerimento del flash, zoom trigger | Giocatore e obiettivi, `flash_hint`, `zoom_trigger` |
 | `props/` | Oggetti di scena, solo estetici o che reagiscono appena alla lampadina | Decorazioni |
 | `gizmos/` | Strumenti visibili solo nell'editor, in gioco si cancellano | Strumenti |
 
@@ -231,6 +277,7 @@ Muri e casse lo bloccano, il vetro no.
 |---|---|---|
 | `floor_button.tscn` | Pulsante a pavimento → [6.1](#61-pulsante-che-muove-una-cassa-floorbutton--railcrate) | `target` (nodo da attivare) |
 | `flash_hint.tscn` | Zona invisibile: finché la lampadina è dentro col flash carico, il pulsante del flash pulsa → [6.3](#63-suggerimento-del-flash-flashhint) | `size` |
+| `zoom_trigger.tscn` | Soglia invisibile che cambia lo zoom della telecamera quando la lampadina la attraversa → [Zoom trigger](#zoom-trigger) | `size`, `axis`, `zoom_before`, `zoom_after`, `duration`, `transition`, `easing` |
 
 ### Decorazioni (nessuna interazione)
 

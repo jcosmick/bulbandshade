@@ -60,6 +60,18 @@ var _loading_screen: LoadingScreen
 ## Numero dell'ultimo caricamento chiesto: uno più vecchio che si risveglia
 ## dopo un await smette lì (vince sempre l'ultima richiesta).
 var _load_id := 0
+## Zoom calcolato da _layout() perché la stanza stia sopra i controlli (zoom
+## base). La telecamera usa lo zoom effettivo: zoom base × moltiplicatore.
+var _zoom_base := 1.0
+## Moltiplicatore di zoom attuale: durante una transizione cambia a ogni frame.
+var _zoom_multiplier := 1.0
+## Ultima transizione chiesta (request_zoom): da _zoom_from a _zoom_target.
+var _zoom_from := 1.0
+var _zoom_target := 1.0
+var _zoom_duration := 0.0
+var _zoom_elapsed := 0.0
+var _zoom_transition := Tween.TRANS_SINE
+var _zoom_easing := Tween.EASE_IN_OUT
 
 
 func _ready() -> void:
@@ -209,6 +221,7 @@ func _process(delta: float) -> void:
 		load_level(level_index)
 		return
 	if _follow:
+		_step_zoom(delta)
 		_update_focus_y()
 		_camera.position = _camera.position.lerp(_camera_target(), 1.0 - exp(-CAMERA_FOLLOW_SPEED * delta))
 
@@ -443,7 +456,8 @@ func _layout() -> void:
 	var width := minf(rect.size.x, VIEW_WIDTH)
 	var zoom := maxf(area.x / width, area.y / rect.size.y)
 	_follow = rect.size.x * zoom > area.x + 1.0 or rect.size.y * zoom > area.y + 1.0
-	_camera.zoom = Vector2(zoom, zoom)
+	_zoom_base = zoom
+	_reset_zoom()
 	var level_top := 0.0
 	if _follow:
 		_camera.position = _camera_target()
@@ -507,3 +521,53 @@ func reachable_view_center(point: Vector2) -> Vector2:
 		return view_center()
 	var controls := Vector2(0, CONTROLS_HEIGHT / _camera.zoom.y / 2.0)
 	return _clamp_camera(point + controls) - controls
+
+
+## Chiede alla telecamera il moltiplicatore di zoom `multiplier` (dello zoom
+## base), con una transizione di `duration` secondi (0 = subito). Se una
+## transizione è in corso, la nuova parte dallo zoom attuale. Nei livelli che
+## stanno nello schermo (telecamera ferma) non fa niente. Lo chiamano gli
+## Zoom trigger.
+func request_zoom(multiplier: float, duration := 0.8, transition := Tween.TRANS_SINE, easing := Tween.EASE_IN_OUT) -> void:
+	if not _follow:
+		return
+	_zoom_from = _zoom_multiplier
+	_zoom_target = multiplier
+	_zoom_duration = maxf(duration, 0.0)
+	_zoom_elapsed = 0.0
+	_zoom_transition = transition
+	_zoom_easing = easing
+	if _zoom_duration == 0.0:
+		_set_zoom_multiplier(multiplier)
+
+
+## Moltiplicatore a cui sta andando la telecamera (a fine transizione).
+func zoom_target() -> float:
+	return _zoom_target
+
+
+## Torna al moltiplicatore 1.0, subito, annullando la transizione in corso.
+func _reset_zoom() -> void:
+	_zoom_from = 1.0
+	_zoom_target = 1.0
+	_zoom_duration = 0.0
+	_zoom_elapsed = 0.0
+	_set_zoom_multiplier(1.0)
+
+
+## Avanza la transizione dello zoom (in _process, prima della telecamera).
+func _step_zoom(delta: float) -> void:
+	if _zoom_elapsed >= _zoom_duration:
+		return
+	_zoom_elapsed = minf(_zoom_elapsed + delta, _zoom_duration)
+	if _zoom_elapsed >= _zoom_duration:
+		_set_zoom_multiplier(_zoom_target)
+	else:
+		_set_zoom_multiplier(Tween.interpolate_value(_zoom_from, _zoom_target - _zoom_from,
+				_zoom_elapsed, _zoom_duration, _zoom_transition, _zoom_easing))
+
+
+func _set_zoom_multiplier(value: float) -> void:
+	_zoom_multiplier = value
+	var zoom := _zoom_base * value
+	_camera.zoom = Vector2(zoom, zoom)
