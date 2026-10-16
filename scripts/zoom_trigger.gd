@@ -3,12 +3,24 @@ class_name ZoomTrigger
 extends Area2D
 ## Soglia direzionale dello zoom della telecamera. Quando la lampadina esce
 ## dall'area, la telecamera passa (con una transizione) allo zoom del lato da
-## cui è uscita: zoom_before se è uscita prima (a sinistra o sopra, secondo
-## l'asse), zoom_after se è uscita dopo (a destra o sotto). All'ingresso non
-## succede niente: entrare e uscire dallo stesso lato non cambia lo zoom.
+## cui è uscita: zoom_before se è uscita dal lato "prima" (da dove si arriva,
+## secondo direction), zoom_after se è uscita dal lato "dopo" (dove si va).
+## All'ingresso non succede niente: entrare e uscire dallo stesso lato non
+## cambia lo zoom.
 ## I valori sono moltiplicatori dello zoom base del Game (1.0 = zoom normale).
 
-enum Axis { HORIZONTAL, VERTICAL }
+## Verso di attraversamento: "prima" è il lato da cui si arriva, "dopo" quello
+## verso cui si va.
+enum Direction {
+	## Prima = sinistra, dopo = destra.
+	LEFT_TO_RIGHT,
+	## Prima = sopra, dopo = sotto.
+	TOP_TO_BOTTOM,
+	## Prima = destra, dopo = sinistra.
+	RIGHT_TO_LEFT,
+	## Prima = sotto, dopo = sopra.
+	BOTTOM_TO_TOP,
+}
 
 ## Dimensioni dell'area in pixel (centrata sul nodo).
 @export var size := Vector2(200, 1520):
@@ -16,22 +28,28 @@ enum Axis { HORIZONTAL, VERTICAL }
 		size = value
 		queue_redraw()
 		update_configuration_warnings()
-## Orizzontale: prima = sinistra, dopo = destra. Verticale: prima = sopra, dopo = sotto.
-@export var axis := Axis.HORIZONTAL
-## Moltiplicatore dello zoom base uscendo dal lato "prima" (< 1 allontana, > 1 avvicina).
+## Verso di attraversamento: decide quale lato è "prima" (da dove si arriva) e
+## quale "dopo" (dove si va).
+@export var direction := Direction.LEFT_TO_RIGHT
+## Moltiplicatore dello zoom base uscendo dal lato "prima", cioè tornando
+## indietro (1 = zoom normale, < 1 allontana, > 1 avvicina).
 @export var zoom_before := 1.0:
 	set(value):
 		zoom_before = value
 		update_configuration_warnings()
-## Moltiplicatore dello zoom base uscendo dal lato "dopo".
+## Moltiplicatore dello zoom base uscendo dal lato "dopo", cioè proseguendo
+## (1 = zoom normale, < 1 allontana, > 1 avvicina).
 @export var zoom_after := 1.0:
 	set(value):
 		zoom_after = value
 		update_configuration_warnings()
 ## Durata della transizione in secondi (0 = cambio istantaneo).
 @export_range(0.0, 5.0, 0.05, "or_greater") var duration := 0.8
-## Curva della transizione (vedi Tween.TransitionType) e il suo easing.
+## Curva della transizione (vedi Tween.TransitionType): sine è morbida,
+## linear costante, le altre più marcate.
 @export var transition: Tween.TransitionType = Tween.TRANS_SINE
+## Dove la curva accelera: in = parte piano, out = arriva piano, in-out =
+## piano a tutti e due i capi (vedi Tween.EaseType).
 @export var easing: Tween.EaseType = Tween.EASE_IN_OUT
 
 const EDITOR_COLOR := Color(0.4, 0.8, 1.0, 0.8)
@@ -60,7 +78,12 @@ func _on_body_exited(body: Node2D) -> void:
 	if game == null:
 		return
 	var offset := body.global_position - global_position
-	var after := (offset.x if axis == Axis.HORIZONTAL else offset.y) > 0.0
+	var after: bool
+	match direction:
+		Direction.LEFT_TO_RIGHT: after = offset.x > 0.0
+		Direction.RIGHT_TO_LEFT: after = offset.x < 0.0
+		Direction.TOP_TO_BOTTOM: after = offset.y > 0.0
+		Direction.BOTTOM_TO_TOP: after = offset.y < 0.0
 	game.request_zoom(zoom_after if after else zoom_before, duration, transition, easing)
 
 

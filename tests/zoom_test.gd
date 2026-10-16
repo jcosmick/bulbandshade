@@ -52,6 +52,7 @@ var CASES: Array[Callable] = [
 	_case_second_trigger_mid_tween,
 	_case_zero_duration,
 	_case_vertical_axis,
+	_case_reversed_directions,
 	_case_fixed_level_ignores,
 	_case_restart_resets,
 	_case_cutscene_holds,
@@ -217,6 +218,27 @@ func _case_vertical_axis() -> void:
 	_report("vertical_axis", _near(below, 1.3) and _near(above, 1.0),
 			"uscita sotto %.3f (atteso 1.3), uscita sopra %.3f (atteso 1.0)" % [below, above])
 	await _shot("vertical_axis")
+
+
+## Versi al contrario: con RIGHT_TO_LEFT il lato "dopo" è a sinistra, con
+## BOTTOM_TO_TOP è sopra.
+func _case_reversed_directions() -> void:
+	await _fresh()
+	game.level.get_node("ZoomA").direction = ZoomTrigger.Direction.RIGHT_TO_LEFT
+	await _cross(Vector2(1500, FLOOR_Y), Vector2(1300, FLOOR_Y))
+	await _wait(SETTLE)
+	var left := _multiplier()
+	await _fresh()
+	game.level.get_node("ZoomVertical").direction = ZoomTrigger.Direction.BOTTOM_TO_TOP
+	await _cross(Vector2(5000, 1800), Vector2(5000, 1588))
+	await _wait(SETTLE)
+	var above := _multiplier()
+	await _cross(Vector2(5000, 1800), Vector2(5000, 2100))
+	await _wait(SETTLE)
+	var below := _multiplier()
+	_report("reversed_directions", _near(left, 1.25) and _near(above, 1.3) and _near(below, 1.0),
+			"destra→sinistra uscita a sinistra %.3f (atteso 1.25), sotto→sopra uscita sopra %.3f (atteso 1.3), uscita sotto %.3f (atteso 1.0)" % [left, above, below])
+	await _shot("reversed_directions")
 
 
 func _case_fixed_level_ignores() -> void:

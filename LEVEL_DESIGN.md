@@ -154,10 +154,14 @@ l'inquadratura in un punto preciso del livello si usa uno **Zoom trigger**
    un'area stretta e alta quanto il livello (es. `(200, H)`), per un pozzo
    un'area larga quanto il pozzo e bassa. Nell'editor si vede il bordo
    azzurro dell'area (i valori di zoom si leggono nell'Inspector).
-3. Scegli `axis`:
-   - **Horizontal**: "prima" = sinistra, "dopo" = destra.
-   - **Vertical**: "prima" = sopra, "dopo" = sotto.
-4. Imposta `zoom_before` (lato "prima") e `zoom_after` (lato "dopo").
+3. Scegli `direction`, il verso in cui il giocatore attraversa la soglia
+   andando avanti: "prima" è il lato da cui arriva, "dopo" quello verso cui va.
+   - **Left To Right**: "prima" = sinistra, "dopo" = destra.
+   - **Top To Bottom**: "prima" = sopra, "dopo" = sotto.
+   - **Right To Left**: "prima" = destra, "dopo" = sinistra.
+   - **Bottom To Top**: "prima" = sotto, "dopo" = sopra.
+4. Imposta `zoom_before` (lato "prima", tornando indietro) e `zoom_after`
+   (lato "dopo", proseguendo).
    Sono moltiplicatori dello zoom base: `1.0` = zoom normale, `< 1.0`
    allontana (si vede di più), `> 1.0` avvicina. Così valgono uguali su ogni
    telefono.
@@ -305,7 +309,7 @@ Muri e casse lo bloccano, il vetro no.
 |---|---|---|
 | `floor_button.tscn` | Pulsante a pavimento → [6.1](#61-pulsante-che-muove-una-cassa-floorbutton--railcrate) | `target` (nodo da attivare) |
 | `flash_hint.tscn` | Zona invisibile: finché la lampadina è dentro col flash carico, il pulsante del flash pulsa → [6.3](#63-suggerimento-del-flash-flashhint) | `size` |
-| `zoom_trigger.tscn` | Soglia invisibile che cambia lo zoom della telecamera quando la lampadina la attraversa → [Zoom trigger](#zoom-trigger) | `size`, `axis`, `zoom_before`, `zoom_after`, `duration`, `transition`, `easing` |
+| `zoom_trigger.tscn` | Soglia invisibile che cambia lo zoom della telecamera quando la lampadina la attraversa → [Zoom trigger](#zoom-trigger) | `size`, `direction`, `zoom_before`, `zoom_after`, `duration`, `transition`, `easing` |
 
 ### Decorazioni (nessuna interazione)
 
